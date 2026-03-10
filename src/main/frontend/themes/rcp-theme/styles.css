@@ -1,0 +1,129 @@
+.view-title-bar {
+    background: var(--lumo-contrast-5pct);
+    padding: 2px 8px;
+    border-bottom: 1px solid var(--lumo-contrast-20pct);
+    flex-shrink: 0;
+    user-select: none;
+}
+
+.view-title {
+    font-size: var(--lumo-font-size-s);
+    font-weight: 600;
+}
+
+.code-editor {
+    font-family: monospace;
+}
+
+.console-output {
+    font-family: monospace;
+}
+
+/* Perspective sidebar */
+.perspective-bar {
+    width: 52px;
+    min-width: 52px;
+    background: var(--lumo-shade-20pct);
+    border-right: 1px solid var(--lumo-contrast-20pct);
+    padding: 4px 0;
+    align-items: center;
+}
+
+.perspective-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: var(--lumo-border-radius-m);
+    margin: 2px 0;
+    color: var(--lumo-secondary-text-color);
+}
+
+.perspective-btn--active {
+    background: var(--lumo-primary-color-10pct);
+    color: var(--lumo-primary-text-color);
+}
+
+/* Minimized (right) bar */
+.minimized-bar {
+    width: 52px;
+    min-width: 52px;
+    background: var(--lumo-shade-20pct);
+    border-left: 1px solid var(--lumo-contrast-20pct);
+    padding: 4px 0;
+    align-items: center;
+}
+
+.minimized-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: var(--lumo-border-radius-m);
+    margin: 2px 0;
+    color: var(--lumo-secondary-text-color);
+}
+
+.minimized-btn:hover {
+    background: var(--lumo-primary-color-10pct);
+    color: var(--lumo-primary-text-color);
+}
+
+/* Icon in view/editor title bars */
+.view-title-bar vaadin-icon {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+/* Workbench header (AppLayout navbar) */
+.workbench-header {
+    gap: 8px;
+    padding: 0 12px;
+}
+
+.workbench-header-title {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    background: linear-gradient(90deg, var(--lumo-primary-color) 0%, #06b6d4 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.workbench-header-version {
+    font-size: var(--lumo-font-size-xs);
+    color: var(--lumo-secondary-text-color);
+    opacity: 0.8;
+    margin-left: 4px;
+    align-self: flex-end;
+    margin-bottom: 2px;
+}
+
+/* Perspective bar system-section divider */
+.perspective-bar-divider {
+    display: block;
+    border-top: 1px solid var(--lumo-contrast-20pct);
+    margin: 4px 8px;
+}
+
+/* System buttons — same base as perspective-btn but slightly muted */
+.system-btn {
+    opacity: 0.75;
+}
+.system-btn:hover {
+    opacity: 1;
+}
+
+/* Per-part status bar */
+.part-status-bar {
+    height: 18px; min-height: 18px; flex-shrink: 0;
+    padding: 0 6px;
+    border-top: 1px solid var(--lumo-contrast-20pct);
+    background: var(--lumo-contrast-5pct);
+    font-size: 11px;
+    color: var(--lumo-secondary-text-color);
+    display: flex; align-items: center; gap: 4px;
+    overflow: hidden;
+}
+.part-status-message { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.part-status-system  { white-space: nowrap; color: var(--lumo-tertiary-text-color); }
