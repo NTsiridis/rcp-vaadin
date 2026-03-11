@@ -3,8 +3,10 @@ package com.rcpvaadin.sample.view;
 import com.rcpvaadin.sample.editor.TextEditorInput;
 import com.rcpvaadin.workbench.IPartSite;
 import com.rcpvaadin.workbench.IViewPart;
+import com.rcpvaadin.workbench.ToolbarItem;
 import com.rcpvaadin.workbench.annotation.RcpView;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.treegrid.TreeGrid;
 import org.springframework.context.annotation.Scope;
 
@@ -29,6 +31,16 @@ public class ProjectExplorerView implements IViewPart {
     @Override public String getTitle()   { return "Project Explorer"; }
     @Override public IPartSite getSite() { return site; }
     @Override public void   dispose()    {}
+
+    @Override
+    public List<ToolbarItem> getToolbarItems() {
+        return List.of(
+            new ToolbarItem(VaadinIcon.SEARCH, "Search files",
+                    () -> { if (site != null) site.setStatusMessage("Search..."); }),
+            new ToolbarItem(VaadinIcon.MINUS,  "Collapse All",
+                    () -> { if (site != null) site.setStatusMessage("Collapsed"); })
+        );
+    }
 
     @Override
     public void init(IPartSite s) {

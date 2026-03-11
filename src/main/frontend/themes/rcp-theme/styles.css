@@ -1,16 +1,65 @@
+/* ==========================================================================
+   Global font-size reduction
+   CSS custom properties inherit through shadow DOM boundaries, so overriding
+   Lumo variables on :root reduces fonts in all Vaadin web components too.
+   ========================================================================== */
+:root {
+    --lumo-font-size-xs:  0.625rem;    /* 10 px  (was 11 px) */
+    --lumo-font-size-s:   0.8125rem;   /* 13 px  (was 14 px) */
+    --lumo-font-size-m:   0.9375rem;   /* 15 px  (was 16 px) */
+    --lumo-font-size-l:   1.0625rem;   /* 17 px  (was 18 px) */
+    --lumo-font-size-xl:  1.25rem;     /* 20 px  (was 22 px) */
+}
+
+/* ==========================================================================
+   Scrolling: let the AppLayout content area scroll when the viewport is
+   narrower / shorter than the minimum content size.
+   ========================================================================== */
+vaadin-app-layout::part(content) {
+    overflow: auto;
+    min-height: 0;
+}
+
+/* ==========================================================================
+   Scrolling: SplitLayout slots
+   Without min-size:0 a flex child cannot shrink below its content size,
+   which causes the panel to overflow instead of showing a scroll bar.
+   overflow:hidden keeps the clipping at the panel boundary so the inner
+   component (Grid, TextArea, …) can display its own scroll bars.
+   ========================================================================== */
+vaadin-split-layout > [slot="primary"],
+vaadin-split-layout > [slot="secondary"] {
+    min-width:  0;
+    min-height: 0;
+    overflow:   hidden;
+}
+
+/* ==========================================================================
+   View title bar
+   ========================================================================== */
 .view-title-bar {
-    background: var(--lumo-contrast-5pct);
-    padding: 2px 8px;
+    background:    var(--lumo-contrast-5pct);
+    padding:       2px 6px;
     border-bottom: 1px solid var(--lumo-contrast-20pct);
-    flex-shrink: 0;
-    user-select: none;
+    flex-shrink:   0;
+    user-select:   none;
 }
 
 .view-title {
-    font-size: var(--lumo-font-size-s);
+    font-size:   var(--lumo-font-size-s);
     font-weight: 600;
 }
 
+/* Icons in view/editor title bars */
+.view-title-bar vaadin-icon {
+    width:      18px;
+    height:     18px;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Editor / view content
+   ========================================================================== */
 .code-editor {
     font-family: monospace;
 }
@@ -19,94 +68,102 @@
     font-family: monospace;
 }
 
-/* Perspective sidebar */
+/* ==========================================================================
+   Perspective sidebar (left icon strip)
+   ========================================================================== */
 .perspective-bar {
-    width: 52px;
-    min-width: 52px;
-    background: var(--lumo-shade-20pct);
+    width:        48px;
+    min-width:    48px;
+    background:   var(--lumo-shade-20pct);
     border-right: 1px solid var(--lumo-contrast-20pct);
-    padding: 4px 0;
-    align-items: center;
+    padding:      4px 0;
+    align-items:  center;
 }
 
 .perspective-btn {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
+    width:         36px;
+    height:        36px;
+    min-width:     36px;
     border-radius: var(--lumo-border-radius-m);
-    margin: 2px 0;
-    color: var(--lumo-secondary-text-color);
+    margin:        2px 0;
+    color:         var(--lumo-secondary-text-color);
 }
 
 .perspective-btn--active {
     background: var(--lumo-primary-color-10pct);
-    color: var(--lumo-primary-text-color);
+    color:      var(--lumo-primary-text-color);
 }
 
-/* Minimized (right) bar */
+/* ==========================================================================
+   Minimized (right) bar
+   ========================================================================== */
 .minimized-bar {
-    width: 52px;
-    min-width: 52px;
-    background: var(--lumo-shade-20pct);
+    width:       48px;
+    min-width:   48px;
+    background:  var(--lumo-shade-20pct);
     border-left: 1px solid var(--lumo-contrast-20pct);
-    padding: 4px 0;
+    padding:     4px 0;
     align-items: center;
 }
 
 .minimized-btn {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
+    width:         36px;
+    height:        36px;
+    min-width:     36px;
     border-radius: var(--lumo-border-radius-m);
-    margin: 2px 0;
-    color: var(--lumo-secondary-text-color);
+    margin:        2px 0;
+    color:         var(--lumo-secondary-text-color);
 }
 
 .minimized-btn:hover {
     background: var(--lumo-primary-color-10pct);
-    color: var(--lumo-primary-text-color);
+    color:      var(--lumo-primary-text-color);
 }
 
-/* Icon in view/editor title bars */
-.view-title-bar vaadin-icon {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-}
-
-/* Workbench header (AppLayout navbar) */
+/* ==========================================================================
+   Workbench header (AppLayout navbar)
+   ========================================================================== */
 .workbench-header {
-    gap: 8px;
-    padding: 0 12px;
+    gap:     6px;
+    padding: 0 10px;
 }
 
 .workbench-header-title {
-    font-size: 1rem;
-    font-weight: 800;
-    letter-spacing: 0.03em;
-    background: linear-gradient(90deg, var(--lumo-primary-color) 0%, #06b6d4 100%);
+    font-size:          var(--lumo-font-size-m);
+    font-weight:        800;
+    letter-spacing:     0.03em;
+    background:         linear-gradient(90deg, var(--lumo-primary-color) 0%, #06b6d4 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-clip: text;
+    background-clip:    text;
 }
 
 .workbench-header-version {
-    font-size: var(--lumo-font-size-xs);
-    color: var(--lumo-secondary-text-color);
-    opacity: 0.8;
-    margin-left: 4px;
-    align-self: flex-end;
+    font-size:    var(--lumo-font-size-xs);
+    color:        var(--lumo-secondary-text-color);
+    opacity:      0.8;
+    margin-left:  2px;
+    align-self:   flex-end;
     margin-bottom: 2px;
 }
 
-/* Perspective bar system-section divider */
-.perspective-bar-divider {
-    display: block;
-    border-top: 1px solid var(--lumo-contrast-20pct);
-    margin: 4px 8px;
+/* Nav toggle button in navbar (same look as a DrawerToggle) */
+.nav-toggle-btn {
+    color: var(--lumo-contrast-60pct);
+}
+.nav-toggle-btn:hover {
+    color: var(--lumo-contrast);
 }
 
-/* System buttons — same base as perspective-btn but slightly muted */
+/* ==========================================================================
+   Perspective bar divider + system buttons
+   ========================================================================== */
+.perspective-bar-divider {
+    display:       block;
+    border-top:    1px solid var(--lumo-contrast-20pct);
+    margin:        4px 6px;
+}
+
 .system-btn {
     opacity: 0.75;
 }
@@ -114,16 +171,96 @@
     opacity: 1;
 }
 
-/* Per-part status bar */
+/* ==========================================================================
+   Per-part status bar (bottom strip inside each view / editor)
+   ========================================================================== */
 .part-status-bar {
-    height: 18px; min-height: 18px; flex-shrink: 0;
+    height: 16px; min-height: 16px; flex-shrink: 0;
     padding: 0 6px;
     border-top: 1px solid var(--lumo-contrast-20pct);
     background: var(--lumo-contrast-5pct);
-    font-size: 11px;
+    font-size: 10px;
     color: var(--lumo-secondary-text-color);
     display: flex; align-items: center; gap: 4px;
     overflow: hidden;
 }
 .part-status-message { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .part-status-system  { white-space: nowrap; color: var(--lumo-tertiary-text-color); }
+
+/* ==========================================================================
+   Perspective navigation panel
+   Inline panel to the right of the perspective bar, left of the editor area.
+   Width is set by Java (220 px expanded, 28 px collapsed); the CSS class
+   provides styling and the smooth transition only — no min-width override.
+   ========================================================================== */
+.perspective-nav-panel {
+    flex-shrink:  0;
+    background:   var(--lumo-base-color);
+    border-right: 1px solid var(--lumo-contrast-20pct);
+    overflow-y:   auto;
+    overflow-x:   hidden;
+    transition:   width 0.15s ease;
+    display:      flex;
+    flex-direction: column;
+}
+
+.perspective-nav-panel vaadin-side-nav {
+    width: 100%;
+}
+
+/* Toggle row at the top of the nav panel */
+.nav-panel-toggle-row {
+    height:        34px;
+    min-height:    34px;
+    flex-shrink:   0;
+    display:       flex;
+    align-items:   center;
+    justify-content: flex-end;
+    padding:       0 2px;
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+    background:    var(--lumo-contrast-5pct);
+}
+
+.nav-panel-toggle-btn {
+    width:         30px;
+    height:        30px;
+    min-width:     30px;
+    padding:       0;
+    color:         var(--lumo-secondary-text-color);
+}
+
+.nav-panel-toggle-btn:hover {
+    color:            var(--lumo-primary-text-color);
+    background:       var(--lumo-primary-color-10pct);
+    border-radius:    var(--lumo-border-radius-s);
+}
+
+/* ==========================================================================
+   Part toolbar bar — separate strip between the title bar and content area.
+   Items are right-aligned; bar is hidden when the active part has no items.
+   ========================================================================== */
+.part-toolbar-bar {
+    display:        flex;
+    align-items:    center;
+    justify-content: flex-end;
+    gap:            2px;
+    padding:        2px 6px;
+    flex-shrink:    0;
+    border-bottom:  1px solid var(--lumo-contrast-10pct);
+    background:     var(--lumo-contrast-5pct);
+    min-height:     34px;
+}
+
+.toolbar-btn {
+    width:          30px;
+    height:         30px;
+    min-width:      30px;
+    padding:        0;
+    color:          var(--lumo-secondary-text-color);
+    border-radius:  var(--lumo-border-radius-s);
+}
+
+.toolbar-btn:hover {
+    background: var(--lumo-contrast-10pct);
+    color:      var(--lumo-body-text-color);
+}

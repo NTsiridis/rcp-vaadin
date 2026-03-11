@@ -3,11 +3,15 @@ package com.rcpvaadin.sample.editor;
 import com.rcpvaadin.workbench.IEditorInput;
 import com.rcpvaadin.workbench.IEditorPart;
 import com.rcpvaadin.workbench.IPartSite;
+import com.rcpvaadin.workbench.ToolbarItem;
 import com.rcpvaadin.workbench.annotation.RcpEditor;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import org.springframework.context.annotation.Scope;
+
+import java.util.List;
 
 @org.springframework.stereotype.Component
 @Scope("prototype")
@@ -25,6 +29,20 @@ public class TextEditorPart implements IEditorPart {
     @Override public void         setInput(IEditorInput input) { this.input = input; }
     @Override public IEditorInput getEditorInput()             { return input; }
     @Override public boolean      isDirty()                    { return false; }
+
+    @Override
+    public List<ToolbarItem> getToolbarItems() {
+        return List.of(
+            new ToolbarItem(VaadinIcon.SEARCH,   "Search",
+                    () -> { if (site != null) site.setStatusMessage("Search..."); }),
+            new ToolbarItem(VaadinIcon.DOWNLOAD, "Save",
+                    () -> { if (site != null) site.setStatusMessage("Saved"); }),
+            new ToolbarItem(VaadinIcon.PENCIL,   "Edit",
+                    () -> { if (site != null) site.setStatusMessage("Edit mode"); }),
+            new ToolbarItem(VaadinIcon.TRASH,    "Delete",
+                    () -> { if (site != null) site.setStatusMessage("Delete?"); })
+        );
+    }
 
     @Override
     public com.vaadin.flow.component.Component createPartControl() {

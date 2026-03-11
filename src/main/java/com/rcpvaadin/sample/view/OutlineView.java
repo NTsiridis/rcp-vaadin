@@ -2,8 +2,10 @@ package com.rcpvaadin.sample.view;
 
 import com.rcpvaadin.workbench.IPartSite;
 import com.rcpvaadin.workbench.IViewPart;
+import com.rcpvaadin.workbench.ToolbarItem;
 import com.rcpvaadin.workbench.annotation.RcpView;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.treegrid.TreeGrid;
 import org.springframework.context.annotation.Scope;
 
@@ -22,6 +24,16 @@ public class OutlineView implements IViewPart {
     @Override public void   init(IPartSite s) { this.site = s; }
     @Override public void   dispose()         {}
     @Override public IPartSite getSite()      { return site; }
+
+    @Override
+    public List<ToolbarItem> getToolbarItems() {
+        return List.of(
+            new ToolbarItem(VaadinIcon.SEARCH, "Search elements",
+                    () -> { if (site != null) site.setStatusMessage("Search..."); }),
+            new ToolbarItem(VaadinIcon.EXPAND, "Expand All",
+                    () -> { if (site != null) site.setStatusMessage("Expanded"); })
+        );
+    }
 
     @Override
     public Component createPartControl() {

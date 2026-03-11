@@ -8,7 +8,9 @@ import com.rcpvaadin.workbench.annotation.RcpView;
 import com.rcpvaadin.workbench.descriptor.EditorDescriptor;
 import com.rcpvaadin.workbench.descriptor.PerspectiveDescriptor;
 import com.rcpvaadin.workbench.descriptor.ViewDescriptor;
+import com.rcpvaadin.workbench.descriptor.PerspectiveNavItem;
 import com.rcpvaadin.workbench.perspective.IPerspectiveFactory;
+import com.rcpvaadin.workbench.perspective.IPerspectiveNavigator;
 import jakarta.annotation.PostConstruct;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,9 +25,10 @@ public class WorkbenchRegistry {
     @Autowired
     private ApplicationContext ctx;
 
-    private final Map<String, ViewDescriptor>        views        = new LinkedHashMap<>();
-    private final Map<String, EditorDescriptor>      editors      = new LinkedHashMap<>();
-    private final Map<String, PerspectiveDescriptor> perspectives = new LinkedHashMap<>();
+    private final Map<String, ViewDescriptor>             views        = new LinkedHashMap<>();
+    private final Map<String, EditorDescriptor>           editors      = new LinkedHashMap<>();
+    private final Map<String, PerspectiveDescriptor>      perspectives = new LinkedHashMap<>();
+    private final Map<String, List<PerspectiveNavItem>>   navItems     = new LinkedHashMap<>();
 
     @PostConstruct
     public void init() {
@@ -56,6 +59,9 @@ public class WorkbenchRegistry {
                 @SuppressWarnings("unchecked")
                 Class<? extends IPerspectiveFactory> factoryClass = (Class<? extends IPerspectiveFactory>) cls;
                 perspectives.put(ann.id(), new PerspectiveDescriptor(ann.id(), ann.name(), ann.icon(), factoryClass));
+                if (bean instanceof IPerspectiveNavigator navigator) {
+                    navItems.put(ann.id(), List.copyOf(navigator.getNavItems()));
+                }
             }
         });
     }
@@ -67,4 +73,8 @@ public class WorkbenchRegistry {
     public Collection<ViewDescriptor>        getAllViews()        { return Collections.unmodifiableCollection(views.values()); }
     public Collection<EditorDescriptor>      getAllEditors()      { return Collections.unmodifiableCollection(editors.values()); }
     public Collection<PerspectiveDescriptor> getAllPerspectives() { return Collections.unmodifiableCollection(perspectives.values()); }
+
+    public List<PerspectiveNavItem> getNavItems(String perspectiveId) {
+        return navItems.getOrDefault(perspectiveId, List.of());
+    }
 }
