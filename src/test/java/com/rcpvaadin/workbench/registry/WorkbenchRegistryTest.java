@@ -26,13 +26,13 @@ class WorkbenchRegistryTest {
     void allEditorsAreRegistered() {
         assertThat(registry.getAllEditors())
                 .extracting(EditorDescriptor::id)
-                .containsExactlyInAnyOrder("textEditor", "userProfile", "systemPreferences");
+                .containsExactlyInAnyOrder("textEditor", "userProfile", "systemPreferences", "employeesEditor");
     }
 
     @Test
     void allPerspectivesAreRegistered() {
         assertThat(registry.getAllPerspectives())
                 .extracting(PerspectiveDescriptor::id)
-                .containsExactlyInAnyOrder("javaPerspective", "debugPerspective");
+                .containsExactlyInAnyOrder("javaPerspective", "debugPerspective", "dataPerspective");
     }
 }

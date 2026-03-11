@@ -3,6 +3,7 @@ package com.rcpvaadin.ui;
 import com.rcpvaadin.workbench.IViewPart;
 import com.rcpvaadin.workbench.PartSite;
 import com.rcpvaadin.workbench.ToolbarItem;
+import com.rcpvaadin.workbench.search.IQuickFilterable;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Span;
@@ -12,6 +13,7 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ViewContainer extends VerticalLayout implements Collapsible {
@@ -24,6 +26,9 @@ public class ViewContainer extends VerticalLayout implements Collapsible {
 
     private final Button maximizeBtn;
     private final PartStatusBar partStatusBar = new PartStatusBar();
+
+    // Non-null only when viewPart implements IQuickFilterable
+    private QuickFilterBar quickFilterBar;
 
     public ViewContainer(IViewPart viewPart, VaadinIcon icon) {
         setSizeFull();
@@ -58,16 +63,53 @@ public class ViewContainer extends VerticalLayout implements Collapsible {
         titleBar.setAlignItems(FlexComponent.Alignment.CENTER);
         titleBar.setFlexGrow(1, title);
 
-        // Toolbar strip: separate row below title bar, right-aligned
-        List<ToolbarItem> toolbarItems = viewPart.getToolbarItems();
-        HorizontalLayout toolbarBar = buildToolbarBar(toolbarItems);
-
         com.vaadin.flow.component.Component content = viewPart.createPartControl();
-        if (toolbarItems.isEmpty()) {
+
+        // Toolbar strip + optional QuickFilterBar
+        List<ToolbarItem> toolbarItems = viewPart.getToolbarItems();
+
+        if (viewPart instanceof IQuickFilterable filterable) {
+            boolean[] filterBarVisible = { false };
+
+            // quickFilterBar is an instance field so the lambda can safely reference it
+            quickFilterBar = new QuickFilterBar(
+                    filterable::applyQuickFilter,
+                    () -> {
+                        filterBarVisible[0] = false;
+                        quickFilterBar.setVisible(false);
+                        quickFilterBar.reset();
+                        filterable.applyQuickFilter("");
+                    });
+            quickFilterBar.setVisible(false);
+
+            // Replace the SEARCH toolbar item's action with a toggle
+            List<ToolbarItem> items = new ArrayList<>(toolbarItems);
+            for (int i = 0; i < items.size(); i++) {
+                ToolbarItem item = items.get(i);
+                if (item.icon() == VaadinIcon.SEARCH) {
+                    items.set(i, new ToolbarItem(item.icon(), item.tooltip(), () -> {
+                        filterBarVisible[0] = !filterBarVisible[0];
+                        quickFilterBar.setVisible(filterBarVisible[0]);
+                        if (filterBarVisible[0]) {
+                            quickFilterBar.focus();
+                        } else {
+                            quickFilterBar.reset();
+                            filterable.applyQuickFilter("");
+                        }
+                    }));
+                    break;
+                }
+            }
+
+            HorizontalLayout toolbarBar = buildToolbarBar(items);
+            add(titleBar, toolbarBar, quickFilterBar, content, partStatusBar);
+        } else if (toolbarItems.isEmpty()) {
             add(titleBar, content, partStatusBar);
         } else {
+            HorizontalLayout toolbarBar = buildToolbarBar(toolbarItems);
             add(titleBar, toolbarBar, content, partStatusBar);
         }
+
         setFlexGrow(1, content);
 
         collapseBtn.addClickListener(e -> {

@@ -5,6 +5,7 @@ import com.rcpvaadin.workbench.IEditorPart;
 import com.rcpvaadin.workbench.IWorkbenchPage;
 import com.rcpvaadin.workbench.PartSite;
 import com.rcpvaadin.workbench.ToolbarItem;
+import com.rcpvaadin.workbench.search.ISearchableEditor;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Span;
@@ -27,10 +28,14 @@ public class EditorArea extends VerticalLayout implements Collapsible {
     private final Map<Tab, IEditorInput> tabToInput = new HashMap<>();
     private final Map<Tab, PartSite>    tabToSite  = new HashMap<>();
     private final Map<Tab, List<ToolbarItem>> tabToToolbarItems = new HashMap<>();
+    private final Map<Tab, SearchPanel> tabToSearchPanel = new HashMap<>();
     private final PartStatusBar         partStatusBar = new PartStatusBar();
 
     // Persistent toolbar strip below the title bar; shown/hidden per active tab
     private final HorizontalLayout toolbarBar = new HorizontalLayout();
+
+    // Slot for the active tab's SearchPanel; empty when no search panel
+    private final VerticalLayout searchPanelSlot = new VerticalLayout();
 
     private IWorkbenchPage page;
     private Runnable collapseCallback   = null;
@@ -83,8 +88,14 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         toolbarBar.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
         toolbarBar.setVisible(false);
 
+        // Search panel slot — shown only when the active tab has a SearchPanel
+        searchPanelSlot.setPadding(false);
+        searchPanelSlot.setSpacing(false);
+        searchPanelSlot.setWidthFull();
+        searchPanelSlot.setVisible(false);
+
         tabSheet.setSizeFull();
-        add(titleBar, toolbarBar, tabSheet, partStatusBar);
+        add(titleBar, toolbarBar, searchPanelSlot, tabSheet, partStatusBar);
         setFlexGrow(1, tabSheet);
 
         collapseBtn.addClickListener(e -> {
@@ -98,7 +109,7 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         });
 
         tabSheet.addSelectedChangeListener(e -> {
-            rebindToolbarForActiveTab();
+            rebindActiveTabUI();
             rebindStatusBarToActiveTab();
         });
     }
@@ -139,10 +150,18 @@ public class EditorArea extends VerticalLayout implements Collapsible {
             tabToSite.put(tab, ps);
         }
 
+        if (editor instanceof ISearchableEditor se) {
+            SearchPanel sp = new SearchPanel(
+                    se.getSearchFields(),
+                    se::executeSearch,
+                    se::clearSearch);
+            tabToSearchPanel.put(tab, sp);
+        }
+
         com.vaadin.flow.component.Component content = editor.createPartControl();
         tabSheet.add(tab, content);
         tabSheet.setSelectedTab(tab);
-        // selectedChangeListener handles toolbar + status bar refresh
+        // selectedChangeListener handles toolbar + search panel + status bar refresh
     }
 
     public void closeTab(IEditorInput input) {
@@ -150,10 +169,11 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         if (tab != null) {
             tabToInput.remove(tab);
             tabToToolbarItems.remove(tab);
+            tabToSearchPanel.remove(tab);
             PartSite ps = tabToSite.remove(tab);
             if (ps != null) ps.bindStatusBar(null, null);
             tabSheet.remove(tab);
-            // selectedChangeListener handles toolbar + status bar refresh
+            // selectedChangeListener handles toolbar + search panel + status bar refresh
         }
     }
 
@@ -161,9 +181,11 @@ public class EditorArea extends VerticalLayout implements Collapsible {
     // Per-tab UI refresh
     // -------------------------------------------------------------------------
 
-    private void rebindToolbarForActiveTab() {
-        toolbarBar.removeAll();
+    private void rebindActiveTabUI() {
         Tab selected = tabSheet.getSelectedTab();
+
+        // Toolbar
+        toolbarBar.removeAll();
         List<ToolbarItem> items = tabToToolbarItems.getOrDefault(selected, List.of());
         toolbarBar.setVisible(!items.isEmpty());
         for (ToolbarItem item : items) {
@@ -175,6 +197,16 @@ public class EditorArea extends VerticalLayout implements Collapsible {
             btn.setTooltipText(item.tooltip());
             btn.addClickListener(e -> item.action().run());
             toolbarBar.add(btn);
+        }
+
+        // Search panel
+        searchPanelSlot.removeAll();
+        SearchPanel sp = (selected != null) ? tabToSearchPanel.get(selected) : null;
+        if (sp != null) {
+            searchPanelSlot.add(sp);
+            searchPanelSlot.setVisible(true);
+        } else {
+            searchPanelSlot.setVisible(false);
         }
     }
 

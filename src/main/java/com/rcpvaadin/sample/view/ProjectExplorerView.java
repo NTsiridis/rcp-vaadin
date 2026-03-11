@@ -5,6 +5,7 @@ import com.rcpvaadin.workbench.IPartSite;
 import com.rcpvaadin.workbench.IViewPart;
 import com.rcpvaadin.workbench.ToolbarItem;
 import com.rcpvaadin.workbench.annotation.RcpView;
+import com.rcpvaadin.workbench.search.IQuickFilterable;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.treegrid.TreeGrid;
@@ -15,7 +16,7 @@ import java.util.List;
 @org.springframework.stereotype.Component
 @Scope("prototype")
 @RcpView(id = "projectExplorer", name = "Project Explorer", icon = com.vaadin.flow.component.icon.VaadinIcon.FOLDER_OPEN)
-public class ProjectExplorerView implements IViewPart {
+public class ProjectExplorerView implements IViewPart, IQuickFilterable {
 
     public record FileNode(String name, String path, boolean directory) {}
 
@@ -26,7 +27,13 @@ public class ProjectExplorerView implements IViewPart {
             new FileNode("Utils.java",   "/my-project/src/Utils.java", false)
     );
 
+    private static final FileNode ROOT = ALL_FILES.get(0);
+    private static final FileNode SRC  = ALL_FILES.get(1);
+    private static final FileNode MAIN = ALL_FILES.get(2);
+    private static final FileNode UTIL = ALL_FILES.get(3);
+
     private IPartSite site;
+    private TreeGrid<FileNode> grid;
 
     @Override public String getTitle()   { return "Project Explorer"; }
     @Override public IPartSite getSite() { return site; }
@@ -50,20 +57,11 @@ public class ProjectExplorerView implements IViewPart {
 
     @Override
     public Component createPartControl() {
-        TreeGrid<FileNode> grid = new TreeGrid<>();
+        grid = new TreeGrid<>();
         grid.addHierarchyColumn(FileNode::name).setHeader("Name");
         grid.setSizeFull();
 
-        FileNode root = ALL_FILES.get(0);
-        FileNode src  = ALL_FILES.get(1);
-        FileNode main = ALL_FILES.get(2);
-        FileNode util = ALL_FILES.get(3);
-
-        grid.setItems(List.of(root), node -> {
-            if (node == root) return List.of(src);
-            if (node == src)  return List.of(main, util);
-            return List.of();
-        });
+        loadFullTree();
 
         grid.addItemClickListener(e -> {
             FileNode node = e.getItem();
@@ -78,5 +76,29 @@ public class ProjectExplorerView implements IViewPart {
         });
 
         return grid;
+    }
+
+    @Override
+    public void applyQuickFilter(String text) {
+        if (grid == null) return;
+        if (text.isBlank()) {
+            loadFullTree();
+        } else {
+            // Show only matching nodes as a flat list
+            List<FileNode> matches = ALL_FILES.stream()
+                    .filter(n -> n.name().toLowerCase().contains(text.toLowerCase()))
+                    .toList();
+            grid.setItems(matches, node -> List.of());
+            grid.expandRecursively(matches, 0);
+        }
+    }
+
+    private void loadFullTree() {
+        grid.setItems(List.of(ROOT), node -> {
+            if (node == ROOT) return List.of(SRC);
+            if (node == SRC)  return List.of(MAIN, UTIL);
+            return List.of();
+        });
+        grid.expandRecursively(List.of(ROOT), 2);
     }
 }

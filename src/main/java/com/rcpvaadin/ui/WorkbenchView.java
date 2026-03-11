@@ -224,6 +224,10 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
         perspectiveLayout = new PerspectiveLayout(pl, page, editorArea, registry, minimizedBar, incomingState);
         contentWrapper.addComponentAtIndex(0, perspectiveLayout);
         contentWrapper.setFlexGrow(1, perspectiveLayout);
+
+        // Let the perspective open its default editors (e.g. a data grid editor).
+        // perspectiveLayout is now set, so editorOpened callbacks will work.
+        factory.createInitialEditors(page);
     }
 
     private void saveOutgoingState(String perspId, String navItemId) {

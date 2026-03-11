@@ -264,3 +264,36 @@ vaadin-split-layout > [slot="secondary"] {
     background: var(--lumo-contrast-10pct);
     color:      var(--lumo-body-text-color);
 }
+
+/* ==========================================================================
+   Multi-criteria search panel (data editors)
+   ========================================================================== */
+.search-panel {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--lumo-contrast-20pct);
+    background: var(--lumo-shade-5pct);
+    padding: 6px 8px;
+}
+.search-criteria-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-end;
+}
+.search-action-row {
+    justify-content: flex-end;
+    gap: 6px;
+    padding-top: 4px;
+}
+
+/* Quick filter bar (views) */
+.quick-filter-bar {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    gap: 4px;
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+    background: var(--lumo-base-color);
+}
+.quick-filter-bar vaadin-text-field {
+    flex: 1;
+    --vaadin-field-default-width: auto;
+}
