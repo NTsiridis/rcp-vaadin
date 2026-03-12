@@ -40,7 +40,7 @@ public class PerspectiveLayout extends VerticalLayout {
     // Sealed node tree
     // -------------------------------------------------------------------------
 
-    sealed interface LayoutNode permits PerspectiveLayout.LeafNode, PerspectiveLayout.SplitNode {}
+    sealed interface LayoutNode permits PerspectiveLayout.LeafNode, PerspectiveLayout.SplitNode, PerspectiveLayout.StackNode {}
 
     record LeafNode(String id, String name, VaadinIcon icon, Component component) implements LayoutNode {}
 
@@ -49,6 +49,9 @@ public class PerspectiveLayout extends VerticalLayout {
             double splitterPos,
             LayoutNode primary,
             LayoutNode secondary) implements LayoutNode {}
+
+    record StackNode(String id, String name, VaadinIcon icon,
+                     List<LeafNode> leaves, int selected) implements LayoutNode {}
 
     // -------------------------------------------------------------------------
     // Fields
@@ -107,7 +110,7 @@ public class PerspectiveLayout extends VerticalLayout {
             VaadinIcon icon = (vd != null) ? vd.icon() : VaadinIcon.SQUARE_SHADOW;
             String name     = (vd != null) ? vd.name() : p.viewId();
 
-            Component viewComponent = new ViewContainer(viewPart, icon);
+            Component viewComponent = new ViewContainer(viewPart, icon, p.viewId());
             LeafNode viewLeaf = new LeafNode(p.viewId(), name, icon, viewComponent);
             root = insertAt(root, p.refPartId(), p, viewLeaf);
         }
@@ -158,6 +161,7 @@ public class PerspectiveLayout extends VerticalLayout {
                         : new SplitNode(orientation, splitterPos, leaf, viewLeaf);
             }
             case LeafNode leaf -> leaf;   // no match — return unchanged
+            case StackNode s   -> s;      // stacks are never part of initial layout
             case SplitNode split -> new SplitNode(
                     split.orientation(),
                     split.splitterPos(),
@@ -176,14 +180,16 @@ public class PerspectiveLayout extends VerticalLayout {
 
     static String deepestPrimaryLeafId(LayoutNode n) {
         return switch (n) {
-            case LeafNode l  -> l.id();
+            case LeafNode  l -> l.id();
+            case StackNode s -> s.id();
             case SplitNode s -> deepestPrimaryLeafId(s.primary());
         };
     }
 
     static String deepestSecondaryLeafId(LayoutNode n) {
         return switch (n) {
-            case LeafNode l  -> l.id();
+            case LeafNode  l -> l.id();
+            case StackNode s -> s.id();
             case SplitNode s -> deepestSecondaryLeafId(s.secondary());
         };
     }
@@ -200,7 +206,8 @@ public class PerspectiveLayout extends VerticalLayout {
      */
     private static List<PathStep> pathTo(LayoutNode node, String targetId) {
         return switch (node) {
-            case LeafNode l -> l.id().equals(targetId) ? new ArrayList<>() : null;
+            case LeafNode  l -> l.id().equals(targetId) ? new ArrayList<>() : null;
+            case StackNode s -> s.id().equals(targetId) ? new ArrayList<>() : null;
             case SplitNode s -> {
                 List<PathStep> pPath = pathTo(s.primary(), targetId);
                 if (pPath != null) { pPath.add(0, new PathStep(s, true));  yield pPath; }
@@ -256,7 +263,23 @@ public class PerspectiveLayout extends VerticalLayout {
 
     private Component renderNode(LayoutNode node) {
         return switch (node) {
-            case LeafNode leaf -> leaf.component();
+            case LeafNode l -> {
+                if (l.component() instanceof ViewContainer vc) {
+                    vc.setVisible(true);
+                    vc.setTitleBarVisible(true);
+                    vc.setDropHandler(this::handleDrop);
+                }
+                yield l.component();
+            }
+            case StackNode sn -> {
+                List<ViewContainer> vcs = sn.leaves().stream()
+                        .map(l -> (ViewContainer) l.component())
+                        .toList();
+                vcs.forEach(vc -> vc.setTitleBarVisible(false));
+                StackedViewContainer svc = new StackedViewContainer(sn, vcs);
+                svc.setDropHandler(this::handleDrop);
+                yield svc;
+            }
             case SplitNode split -> {
                 Component primaryComp   = renderNode(split.primary());
                 Component secondaryComp = renderNode(split.secondary());
@@ -288,7 +311,7 @@ public class PerspectiveLayout extends VerticalLayout {
                             }
                         }));
 
-                // ---- Primary leaf wiring ----
+                // ---- Primary wiring (LeafNode) ----
                 if (split.primary() instanceof LeafNode ln && primaryComp instanceof Collapsible c) {
                     Runnable collapse = () -> {
                         if (ln.id().equals(maximizedPartId)) unmaximizePart();
@@ -319,7 +342,31 @@ public class PerspectiveLayout extends VerticalLayout {
                     }
                 }
 
-                // ---- Secondary leaf wiring ----
+                // ---- Primary wiring (StackNode) ----
+                if (split.primary() instanceof StackNode sn && primaryComp instanceof Collapsible c) {
+                    Runnable collapse = () -> {
+                        if (sn.id().equals(maximizedPartId)) unmaximizePart();
+                        if (currentlyMinimized.contains(sn.id())) return;
+                        double restorePos = currentPos[0];
+                        currentlyMinimized.add(sn.id());
+                        primaryComp.setVisible(false);
+                        layout.setSplitterPosition(0);
+                        minimizedBar.addMinimized(sn.id(), sn.name(), sn.icon(), () -> {
+                            primaryComp.setVisible(true);
+                            layout.setSplitterPosition(restorePos);
+                            currentlyMinimized.remove(sn.id());
+                            minimizedBar.removeMinimized(sn.id());
+                        });
+                    };
+                    collapseActions.put(sn.id(), collapse);
+                    c.setCollapseSupport(collapse, () -> {});
+                    c.setMaximizeSupport(
+                            () -> maximizePart(sn.id(), c),
+                            this::unmaximizePart
+                    );
+                }
+
+                // ---- Secondary wiring (LeafNode) ----
                 if (split.secondary() instanceof LeafNode ln && secondaryComp instanceof Collapsible c) {
                     Runnable collapse = () -> {
                         if (ln.id().equals(maximizedPartId)) unmaximizePart();
@@ -350,8 +397,120 @@ public class PerspectiveLayout extends VerticalLayout {
                     }
                 }
 
+                // ---- Secondary wiring (StackNode) ----
+                if (split.secondary() instanceof StackNode sn && secondaryComp instanceof Collapsible c) {
+                    Runnable collapse = () -> {
+                        if (sn.id().equals(maximizedPartId)) unmaximizePart();
+                        if (currentlyMinimized.contains(sn.id())) return;
+                        double restorePos = currentPos[0];
+                        currentlyMinimized.add(sn.id());
+                        secondaryComp.setVisible(false);
+                        layout.setSplitterPosition(100);
+                        minimizedBar.addMinimized(sn.id(), sn.name(), sn.icon(), () -> {
+                            secondaryComp.setVisible(true);
+                            layout.setSplitterPosition(restorePos);
+                            currentlyMinimized.remove(sn.id());
+                            minimizedBar.removeMinimized(sn.id());
+                        });
+                    };
+                    collapseActions.put(sn.id(), collapse);
+                    c.setCollapseSupport(collapse, () -> {});
+                    c.setMaximizeSupport(
+                            () -> maximizePart(sn.id(), c),
+                            this::unmaximizePart
+                    );
+                }
+
                 yield layout;
             }
+        };
+    }
+
+    // -------------------------------------------------------------------------
+    // Drag-and-drop stacking
+    // -------------------------------------------------------------------------
+
+    public void handleDrop(String draggedId, String targetId) {
+        if (draggedId.equals(targetId)) return;
+        if (draggedId.equals(IPageLayout.ID_EDITOR_AREA)) return;
+
+        LeafNode leaf = findLeaf(rootNode, draggedId);
+        if (leaf == null) return;
+        rootNode = removeLeaf(rootNode, draggedId);
+        if (rootNode == null) return;
+        rootNode = stackOnto(rootNode, targetId, leaf);
+        rebuildDisplay();
+    }
+
+    private void rebuildDisplay() {
+        // Reset maximize state (split layouts are about to be discarded)
+        if (maximizedCollapsible != null) maximizedCollapsible.setMaximizedState(false);
+        maximizedPartId      = null;
+        maximizedCollapsible = null;
+        maximizeSnapshot     = null;
+
+        // Clear minimized state (restore any invisible views)
+        for (String id : new ArrayList<>(currentlyMinimized)) {
+            minimizedBar.removeMinimized(id);
+        }
+        currentlyMinimized.clear();
+
+        removeAll();
+        splitLayouts.clear();
+        splitPositions.clear();
+        collapseActions.clear();
+
+        Component rendered = renderNode(rootNode);
+        add(rendered);
+        setFlexGrow(1, rendered);
+    }
+
+    private static LeafNode findLeaf(LayoutNode node, String id) {
+        return switch (node) {
+            case LeafNode  l -> l.id().equals(id) ? l : null;
+            case StackNode s -> s.leaves().stream()
+                    .filter(l -> l.id().equals(id)).findFirst().orElse(null);
+            case SplitNode s -> {
+                LeafNode p = findLeaf(s.primary(), id);
+                yield p != null ? p : findLeaf(s.secondary(), id);
+            }
+        };
+    }
+
+    private static LayoutNode removeLeaf(LayoutNode node, String id) {
+        return switch (node) {
+            case LeafNode  l -> l.id().equals(id) ? null : l;
+            case StackNode s -> {
+                List<LeafNode> remaining = s.leaves().stream()
+                        .filter(l -> !l.id().equals(id)).toList();
+                if (remaining.size() == s.leaves().size()) yield s;   // not found here
+                if (remaining.size() == 1)                 yield remaining.get(0); // degenerate → plain leaf
+                yield new StackNode(s.id(), s.name(), s.icon(), remaining, 0);
+            }
+            case SplitNode s -> {
+                LayoutNode np = removeLeaf(s.primary(),   id);
+                LayoutNode ns = removeLeaf(s.secondary(), id);
+                if (np == null) yield ns;
+                if (ns == null) yield np;
+                yield new SplitNode(s.orientation(), s.splitterPos(), np, ns);
+            }
+        };
+    }
+
+    private static LayoutNode stackOnto(LayoutNode node, String targetId, LeafNode dragged) {
+        return switch (node) {
+            case LeafNode l when l.id().equals(targetId) ->
+                    new StackNode(l.id(), l.name(), l.icon(), List.of(l, dragged), 0);
+            case LeafNode l -> l;
+            case StackNode s when s.id().equals(targetId) -> {
+                List<LeafNode> extended = new ArrayList<>(s.leaves());
+                extended.add(dragged);
+                yield new StackNode(s.id(), s.name(), s.icon(), List.copyOf(extended), s.selected());
+            }
+            case StackNode s -> s;
+            case SplitNode s -> new SplitNode(s.orientation(), s.splitterPos(),
+                    stackOnto(s.primary(), targetId, dragged),
+                    stackOnto(s.secondary(), targetId, dragged));
         };
     }
 

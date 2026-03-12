@@ -6,6 +6,9 @@ import com.rcpvaadin.workbench.ToolbarItem;
 import com.rcpvaadin.workbench.search.IQuickFilterable;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dnd.DragSource;
+import com.vaadin.flow.component.dnd.DropEffect;
+import com.vaadin.flow.component.dnd.DropTarget;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -15,6 +18,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 public class ViewContainer extends VerticalLayout implements Collapsible {
 
@@ -25,12 +29,14 @@ public class ViewContainer extends VerticalLayout implements Collapsible {
     private boolean  maximized = false;
 
     private final Button maximizeBtn;
+    private final HorizontalLayout titleBar;
     private final PartStatusBar partStatusBar = new PartStatusBar();
+    private BiConsumer<String, String> dropHandler;
 
     // Non-null only when viewPart implements IQuickFilterable
     private QuickFilterBar quickFilterBar;
 
-    public ViewContainer(IViewPart viewPart, VaadinIcon icon) {
+    public ViewContainer(IViewPart viewPart, VaadinIcon icon, String viewId) {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
@@ -56,12 +62,28 @@ public class ViewContainer extends VerticalLayout implements Collapsible {
         title.addClassName("view-title");
 
         // Title bar: icon | title | [flex spacer] | maximize | collapse
-        HorizontalLayout titleBar = new HorizontalLayout(iconComp, title, maximizeBtn, collapseBtn);
+        titleBar = new HorizontalLayout(iconComp, title, maximizeBtn, collapseBtn);
         titleBar.addClassName("view-title-bar");
         titleBar.setWidthFull();
         titleBar.setPadding(false);
         titleBar.setAlignItems(FlexComponent.Alignment.CENTER);
         titleBar.setFlexGrow(1, title);
+
+        // Drag source — title bar only
+        DragSource<HorizontalLayout> ds = DragSource.create(titleBar);
+        ds.setDragData(viewId);
+
+        // Drop target — entire container
+        DropTarget<ViewContainer> dt = DropTarget.create(this);
+        dt.setDropEffect(DropEffect.MOVE);
+        getElement().addEventListener("dragenter", e -> addClassName("drop-target-active"));
+        getElement().addEventListener("dragleave", e -> removeClassName("drop-target-active"));
+        dt.addDropListener(e -> {
+            removeClassName("drop-target-active");
+            e.getDragData().ifPresent(data -> {
+                if (dropHandler != null) dropHandler.accept((String) data, viewId);
+            });
+        });
 
         com.vaadin.flow.component.Component content = viewPart.createPartControl();
 
@@ -147,6 +169,14 @@ public class ViewContainer extends VerticalLayout implements Collapsible {
         }
         return bar;
     }
+
+    // -------------------------------------------------------------------------
+    // Drop handler
+    // -------------------------------------------------------------------------
+
+    public void setDropHandler(BiConsumer<String, String> handler) { this.dropHandler = handler; }
+
+    public void setTitleBarVisible(boolean visible) { titleBar.setVisible(visible); }
 
     // -------------------------------------------------------------------------
     // Collapsible

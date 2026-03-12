@@ -55,9 +55,18 @@ public class EditorArea extends VerticalLayout implements Collapsible {
     }
 
     public void openTab(IEditorPart editor, IEditorInput input, VaadinIcon icon) {
+        // Case 1: already visible in a tab
         if (inputToTab.containsKey(input)) {
             tabSheet.setSelectedTab(inputToTab.get(input));
             return;
+        }
+
+        // Case 2: currently minimized — restore instead of creating a duplicate
+        for (Map.Entry<String, MinimizedEditorEntry> e : minimizedEditors.entrySet()) {
+            if (e.getValue().input().equals(input)) {
+                restoreEditorTab(e.getKey());
+                return;
+            }
         }
 
         Tab tab = buildTab(editor, input, icon);
