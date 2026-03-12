@@ -3,119 +3,55 @@ package com.rcpvaadin.ui;
 import com.rcpvaadin.workbench.IEditorInput;
 import com.rcpvaadin.workbench.IEditorPart;
 import com.rcpvaadin.workbench.IWorkbenchPage;
-import com.rcpvaadin.workbench.PartSite;
-import com.rcpvaadin.workbench.ToolbarItem;
-import com.rcpvaadin.workbench.search.ISearchableEditor;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.TabSheet;
 
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class EditorArea extends VerticalLayout implements Collapsible {
 
-    private final TabSheet              tabSheet   = new TabSheet();
-    private final Map<IEditorInput, Tab> inputToTab = new HashMap<>();
-    private final Map<Tab, IEditorInput> tabToInput = new HashMap<>();
-    private final Map<Tab, PartSite>    tabToSite  = new HashMap<>();
-    private final Map<Tab, List<ToolbarItem>> tabToToolbarItems = new HashMap<>();
-    private final Map<Tab, SearchPanel> tabToSearchPanel = new HashMap<>();
-    private final PartStatusBar         partStatusBar = new PartStatusBar();
+    private record MinimizedEditorEntry(
+            IEditorPart editor, IEditorInput input, VaadinIcon icon, EditorContainer container) {}
 
-    // Persistent toolbar strip below the title bar; shown/hidden per active tab
-    private final HorizontalLayout toolbarBar = new HorizontalLayout();
-
-    // Slot for the active tab's SearchPanel; empty when no search panel
-    private final VerticalLayout searchPanelSlot = new VerticalLayout();
+    private final TabSheet                          tabSheet         = new TabSheet();
+    private final Map<IEditorInput, Tab>            inputToTab       = new HashMap<>();
+    private final Map<Tab, IEditorInput>            tabToInput       = new HashMap<>();
+    private final Map<Tab, EditorContainer>         tabToContainer   = new HashMap<>();
+    private final Map<String, MinimizedEditorEntry> minimizedEditors = new LinkedHashMap<>();
 
     private IWorkbenchPage page;
+    private MinimizedBar   minimizedBar;
     private Runnable collapseCallback   = null;
     private Runnable expandCallback     = null;
     private Runnable maximizeCallback   = null;
     private Runnable unmaximizeCallback = null;
-    private boolean  maximized = false;
-
-    private final Button maximizeBtn;
+    private boolean  maximized          = false;
+    private int      minimizeCounter    = 0;
 
     public EditorArea() {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-
-        Icon collapseIcon = new Icon(VaadinIcon.ANGLE_DOWN);
-        collapseIcon.setSize("22px");
-        Button collapseBtn = new Button(collapseIcon);
-        collapseBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        collapseBtn.getStyle().set("min-width", "30px").set("width", "30px").set("height", "30px");
-        collapseBtn.setTooltipText("Minimize");
-
-        Icon maxIcon = new Icon(VaadinIcon.EXPAND_SQUARE);
-        maxIcon.setSize("22px");
-        maximizeBtn = new Button(maxIcon);
-        maximizeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        maximizeBtn.getStyle().set("min-width", "30px").set("width", "30px").set("height", "30px");
-        maximizeBtn.setTooltipText("Maximize");
-
-        Icon iconComp = new Icon(VaadinIcon.PENCIL);
-        iconComp.getStyle().set("width", "18px").set("height", "18px");
-
-        Span title = new Span("Editors");
-        title.addClassName("view-title");
-
-        // Title bar: icon | title | [flex spacer] | maximize | collapse
-        HorizontalLayout titleBar = new HorizontalLayout(iconComp, title, maximizeBtn, collapseBtn);
-        titleBar.addClassName("view-title-bar");
-        titleBar.setWidthFull();
-        titleBar.setPadding(false);
-        titleBar.setAlignItems(FlexComponent.Alignment.CENTER);
-        titleBar.setFlexGrow(1, title);
-
-        // Persistent toolbar strip below title bar
-        toolbarBar.addClassName("part-toolbar-bar");
-        toolbarBar.setPadding(false);
-        toolbarBar.setSpacing(false);
-        toolbarBar.setWidthFull();
-        toolbarBar.setAlignItems(FlexComponent.Alignment.CENTER);
-        toolbarBar.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
-        toolbarBar.setVisible(false);
-
-        // Search panel slot — shown only when the active tab has a SearchPanel
-        searchPanelSlot.setPadding(false);
-        searchPanelSlot.setSpacing(false);
-        searchPanelSlot.setWidthFull();
-        searchPanelSlot.setVisible(false);
-
         tabSheet.setSizeFull();
-        add(titleBar, toolbarBar, searchPanelSlot, tabSheet, partStatusBar);
+        add(tabSheet);
         setFlexGrow(1, tabSheet);
-
-        collapseBtn.addClickListener(e -> {
-            setVisible(false);
-            if (collapseCallback != null) collapseCallback.run();
-        });
-
-        maximizeBtn.addClickListener(e -> {
-            if (!maximized) { if (maximizeCallback   != null) maximizeCallback.run(); }
-            else             { if (unmaximizeCallback != null) unmaximizeCallback.run(); }
-        });
-
-        tabSheet.addSelectedChangeListener(e -> {
-            rebindActiveTabUI();
-            rebindStatusBarToActiveTab();
-        });
     }
 
     public void setPage(IWorkbenchPage page) {
         this.page = page;
+    }
+
+    public void setMinimizedBar(MinimizedBar minimizedBar) {
+        this.minimizedBar = minimizedBar;
     }
 
     public void openTab(IEditorPart editor, IEditorInput input, VaadinIcon icon) {
@@ -124,101 +60,84 @@ public class EditorArea extends VerticalLayout implements Collapsible {
             return;
         }
 
-        Icon tabIcon = new Icon(icon);
-        tabIcon.getStyle().set("width", "12px").set("height", "12px");
-
-        Span titleSpan = new Span(editor.getTitle());
-        Button closeBtn = new Button("×");
-        closeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
-        closeBtn.getStyle().set("margin-left", "4px");
-
-        HorizontalLayout header = new HorizontalLayout(tabIcon, titleSpan, closeBtn);
-        header.setAlignItems(HorizontalLayout.Alignment.CENTER);
-        header.setSpacing(false);
-
-        Tab tab = new Tab(header);
-        closeBtn.addClickListener(e -> {
-            if (page != null) page.closeEditor(input);
-        });
-
-        // Populate maps BEFORE tabSheet.add() — adding the first tab auto-selects
-        // it and fires selectedChangeListener, which must already find the maps populated.
-        inputToTab.put(input, tab);
-        tabToInput.put(tab, input);
-        tabToToolbarItems.put(tab, editor.getToolbarItems());
-        if (editor.getSite() instanceof PartSite ps) {
-            tabToSite.put(tab, ps);
-        }
-
-        if (editor instanceof ISearchableEditor se) {
-            SearchPanel sp = new SearchPanel(
-                    se.getSearchFields(),
-                    se::executeSearch,
-                    se::clearSearch);
-            tabToSearchPanel.put(tab, sp);
-        }
-
-        com.vaadin.flow.component.Component content = editor.createPartControl();
+        Tab tab = buildTab(editor, input, icon);
+        EditorContainer content = new EditorContainer(editor, icon,
+                () -> minimizeEditorTab(input, editor, icon),
+                this::doMaximize,
+                this::doUnmaximize);
+        tabToContainer.put(tab, content);
         tabSheet.add(tab, content);
         tabSheet.setSelectedTab(tab);
-        // selectedChangeListener handles toolbar + search panel + status bar refresh
     }
 
     public void closeTab(IEditorInput input) {
         Tab tab = inputToTab.remove(input);
         if (tab != null) {
             tabToInput.remove(tab);
-            tabToToolbarItems.remove(tab);
-            tabToSearchPanel.remove(tab);
-            PartSite ps = tabToSite.remove(tab);
-            if (ps != null) ps.bindStatusBar(null, null);
+            tabToContainer.remove(tab);
             tabSheet.remove(tab);
-            // selectedChangeListener handles toolbar + search panel + status bar refresh
         }
     }
 
     // -------------------------------------------------------------------------
-    // Per-tab UI refresh
+    // Per-tab minimize / restore
     // -------------------------------------------------------------------------
 
-    private void rebindActiveTabUI() {
-        Tab selected = tabSheet.getSelectedTab();
+    private void minimizeEditorTab(IEditorInput input, IEditorPart editor, VaadinIcon icon) {
+        Tab tab = inputToTab.remove(input);
+        if (tab == null) return;
+        EditorContainer container = tabToContainer.remove(tab);
+        tabToInput.remove(tab);
+        tabSheet.remove(tab);
 
-        // Toolbar
-        toolbarBar.removeAll();
-        List<ToolbarItem> items = tabToToolbarItems.getOrDefault(selected, List.of());
-        toolbarBar.setVisible(!items.isEmpty());
-        for (ToolbarItem item : items) {
-            Icon icon = new Icon(item.icon());
-            icon.setSize("18px");
-            Button btn = new Button(icon);
-            btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-            btn.addClassName("toolbar-btn");
-            btn.setTooltipText(item.tooltip());
-            btn.addClickListener(e -> item.action().run());
-            toolbarBar.add(btn);
-        }
-
-        // Search panel
-        searchPanelSlot.removeAll();
-        SearchPanel sp = (selected != null) ? tabToSearchPanel.get(selected) : null;
-        if (sp != null) {
-            searchPanelSlot.add(sp);
-            searchPanelSlot.setVisible(true);
-        } else {
-            searchPanelSlot.setVisible(false);
+        if (minimizedBar != null) {
+            String minId = "editor_" + (minimizeCounter++);
+            minimizedEditors.put(minId, new MinimizedEditorEntry(editor, input, icon, container));
+            minimizedBar.addMinimized(minId, editor.getTitle(), icon, () -> restoreEditorTab(minId));
         }
     }
 
-    private void rebindStatusBarToActiveTab() {
-        Tab selected = tabSheet.getSelectedTab();
-        PartSite ps = (selected != null) ? tabToSite.get(selected) : null;
-        if (ps != null) {
-            ps.bindStatusBar(partStatusBar::setMessage, partStatusBar::setSystemInfo);
-        } else {
-            partStatusBar.setMessage("");
-            partStatusBar.setSystemInfo("");
-        }
+    private void restoreEditorTab(String minId) {
+        MinimizedEditorEntry entry = minimizedEditors.remove(minId);
+        if (entry == null) return;
+        if (minimizedBar != null) minimizedBar.removeMinimized(minId);
+
+        Tab newTab = buildTab(entry.editor(), entry.input(), entry.icon());
+        tabToContainer.put(newTab, entry.container());
+        tabSheet.add(newTab, entry.container());
+        tabSheet.setSelectedTab(newTab);
+    }
+
+    // -------------------------------------------------------------------------
+    // Shared helpers
+    // -------------------------------------------------------------------------
+
+    private Tab buildTab(IEditorPart editor, IEditorInput input, VaadinIcon icon) {
+        Icon tabIcon = new Icon(icon);
+        tabIcon.getStyle().set("width", "12px").set("height", "12px");
+
+        Span titleSpan = new Span(editor.getTitle());
+
+        Button closeBtn = new Button("×");
+        closeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
+        closeBtn.addClickListener(e -> { if (page != null) page.closeEditor(input); });
+
+        HorizontalLayout header = new HorizontalLayout(tabIcon, titleSpan, closeBtn);
+        header.setSpacing(false);
+        header.getStyle().set("gap", "4px").set("align-items", "center");
+
+        Tab tab = new Tab(header);
+        inputToTab.put(input, tab);
+        tabToInput.put(tab, input);
+        return tab;
+    }
+
+    private void doMaximize() {
+        if (maximizeCallback != null) maximizeCallback.run();
+    }
+
+    private void doUnmaximize() {
+        if (unmaximizeCallback != null) unmaximizeCallback.run();
     }
 
     // -------------------------------------------------------------------------
@@ -240,10 +159,6 @@ public class EditorArea extends VerticalLayout implements Collapsible {
     @Override
     public void setMaximizedState(boolean m) {
         this.maximized = m;
-        Icon icon = new Icon(m ? VaadinIcon.COMPRESS : VaadinIcon.EXPAND_SQUARE);
-        icon.setSize("22px");
-        maximizeBtn.setIcon(icon);
-        maximizeBtn.getStyle().set("color", m ? "var(--lumo-primary-color)" : "");
-        maximizeBtn.setTooltipText(m ? "Restore" : "Maximize");
+        tabToContainer.values().forEach(ec -> ec.setMaximizedState(m));
     }
 }

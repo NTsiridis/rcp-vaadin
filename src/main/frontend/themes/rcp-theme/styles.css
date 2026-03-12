@@ -43,6 +43,7 @@ vaadin-split-layout > [slot="secondary"] {
     border-bottom: 1px solid var(--lumo-contrast-20pct);
     flex-shrink:   0;
     user-select:   none;
+    cursor:        grab;
 }
 
 .view-title {

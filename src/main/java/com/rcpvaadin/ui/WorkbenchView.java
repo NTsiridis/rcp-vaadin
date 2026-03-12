@@ -211,6 +211,7 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
 
         EditorArea editorArea = new EditorArea();
         editorArea.setPage(page);
+        editorArea.setMinimizedBar(minimizedBar);
 
         minimizedBar.removeAll();
 
