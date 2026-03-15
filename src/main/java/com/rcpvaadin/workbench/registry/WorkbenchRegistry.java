@@ -58,7 +58,7 @@ public class WorkbenchRegistry {
             if (ann != null && IPerspectiveFactory.class.isAssignableFrom(cls)) {
                 @SuppressWarnings("unchecked")
                 Class<? extends IPerspectiveFactory> factoryClass = (Class<? extends IPerspectiveFactory>) cls;
-                perspectives.put(ann.id(), new PerspectiveDescriptor(ann.id(), ann.name(), ann.icon(), factoryClass));
+                perspectives.put(ann.id(), new PerspectiveDescriptor(ann.id(), ann.name(), ann.icon(), ann.color(), factoryClass));
                 if (bean instanceof IPerspectiveNavigator navigator) {
                     navItems.put(ann.id(), List.copyOf(navigator.getNavItems()));
                 }

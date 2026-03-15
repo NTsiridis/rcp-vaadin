@@ -8,7 +8,7 @@ import com.rcpvaadin.workbench.perspective.IPerspectiveFactory;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import org.springframework.stereotype.Component;
 
-@RcpPerspective(id = "dataPerspective", name = "Data", icon = VaadinIcon.DATABASE)
+@RcpPerspective(id = "dataPerspective", name = "Data", icon = VaadinIcon.DATABASE, color = "#059669")
 @Component
 public class DataPerspective implements IPerspectiveFactory {
 

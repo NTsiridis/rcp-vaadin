@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-@RcpPerspective(id = "javaPerspective", name = "Java", icon = VaadinIcon.CODE)
+@RcpPerspective(id = "javaPerspective", name = "Java", icon = VaadinIcon.CODE, color = "#2563eb")
 public class JavaPerspective implements IPerspectiveFactory, IPerspectiveNavigator {
 
     @Override

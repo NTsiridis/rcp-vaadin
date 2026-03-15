@@ -61,6 +61,7 @@ public class PerspectiveLayout extends VerticalLayout {
     private final MinimizedBar           minimizedBar;
     private final PerspectiveState       state;
     private final IWorkbenchPage         page;
+    private final WorkbenchRegistry      registry;
 
     // Package-private for tests — keyed by part id
     final Map<String, Runnable>  collapseActions    = new LinkedHashMap<>();
@@ -70,10 +71,13 @@ public class PerspectiveLayout extends VerticalLayout {
     private LayoutNode rootNode;
 
     // Live SplitLayouts keyed by splitKey
-    private final Map<String, SplitLayout> splitLayouts   = new LinkedHashMap<>();
+    private final Map<String, SplitLayout>           splitLayouts = new LinkedHashMap<>();
 
     // Effective (server-tracked) splitter positions keyed by splitKey
-    private final Map<String, double[]>    splitPositions = new LinkedHashMap<>();
+    private final Map<String, double[]>              splitPositions = new LinkedHashMap<>();
+
+    // Live StackedViewContainers keyed by stack id
+    private final Map<String, StackedViewContainer>  activeStacks = new LinkedHashMap<>();
 
     // Maximize state
     private String      maximizedPartId      = null;
@@ -91,31 +95,39 @@ public class PerspectiveLayout extends VerticalLayout {
         this.minimizedBar = minimizedBar;
         this.state        = state;
         this.page         = page;
+        this.registry     = registry;
         setSizeFull();
         setPadding(false);
         setSpacing(false);
 
-        // 1. Open all views through the model so state & UI are in sync
-        for (PageLayout.ViewPlacement p : pageLayout.getPlacements()) {
-            page.showView(p.viewId());
+        LayoutNode savedRoot = state.getSavedRootNode();
+        LayoutNode root;
+
+        if (savedRoot != null) {
+            // RESTORE PATH: use the node tree the user left behind
+            collectViewIds(savedRoot).forEach(page::showView);
+            root = rebuildTreeFromSaved(savedRoot);
+        } else {
+            // FACTORY PATH: build tree from the factory layout
+            for (PageLayout.ViewPlacement p : pageLayout.getPlacements()) {
+                page.showView(p.viewId());
+            }
+            root = new LeafNode(IPageLayout.ID_EDITOR_AREA, "Editors", VaadinIcon.PENCIL, editorArea);
+            for (PageLayout.ViewPlacement p : pageLayout.getPlacements()) {
+                IViewPart viewPart = page.getOpenView(p.viewId());
+                if (viewPart == null) continue;
+
+                ViewDescriptor vd = registry.findView(p.viewId()).orElse(null);
+                VaadinIcon icon = (vd != null) ? vd.icon() : VaadinIcon.SQUARE_SHADOW;
+                String name     = (vd != null) ? vd.name() : p.viewId();
+
+                Component viewComponent = new ViewContainer(viewPart, icon, p.viewId());
+                LeafNode viewLeaf = new LeafNode(p.viewId(), name, icon, viewComponent);
+                root = insertAt(root, p.refPartId(), p, viewLeaf);
+            }
         }
 
-        // 2. Build LayoutNode tree starting from editor area as root
-        LayoutNode root = new LeafNode(IPageLayout.ID_EDITOR_AREA, "Editors", VaadinIcon.PENCIL, editorArea);
-        for (PageLayout.ViewPlacement p : pageLayout.getPlacements()) {
-            IViewPart viewPart = page.getOpenView(p.viewId());
-            if (viewPart == null) continue;
-
-            ViewDescriptor vd = registry.findView(p.viewId()).orElse(null);
-            VaadinIcon icon = (vd != null) ? vd.icon() : VaadinIcon.SQUARE_SHADOW;
-            String name     = (vd != null) ? vd.name() : p.viewId();
-
-            Component viewComponent = new ViewContainer(viewPart, icon, p.viewId());
-            LeafNode viewLeaf = new LeafNode(p.viewId(), name, icon, viewComponent);
-            root = insertAt(root, p.refPartId(), p, viewLeaf);
-        }
-
-        // 3. Store root for maximize tree-walk
+        // Store root for maximize tree-walk
         this.rootNode = root;
 
         // 4. Render the tree into nested SplitLayouts (also wires collapseActions)
@@ -133,6 +145,12 @@ public class PerspectiveLayout extends VerticalLayout {
 
     public Set<String> getCurrentlyMinimized() {
         return Set.copyOf(currentlyMinimized);
+    }
+
+    public LayoutNode getRootNode() { return rootNode; }
+
+    public void captureStackSelections() {
+        activeStacks.forEach((id, svc) -> state.setStackSelectedIndex(id, svc.getSelectedIndex()));
     }
 
     // -------------------------------------------------------------------------
@@ -278,6 +296,7 @@ public class PerspectiveLayout extends VerticalLayout {
                 vcs.forEach(vc -> vc.setTitleBarVisible(false));
                 StackedViewContainer svc = new StackedViewContainer(sn, vcs);
                 svc.setDropHandler(this::handleDrop);
+                activeStacks.put(sn.id(), svc);
                 yield svc;
             }
             case SplitNode split -> {
@@ -459,6 +478,7 @@ public class PerspectiveLayout extends VerticalLayout {
         splitLayouts.clear();
         splitPositions.clear();
         collapseActions.clear();
+        activeStacks.clear();
 
         Component rendered = renderNode(rootNode);
         add(rendered);
@@ -511,6 +531,51 @@ public class PerspectiveLayout extends VerticalLayout {
             case SplitNode s -> new SplitNode(s.orientation(), s.splitterPos(),
                     stackOnto(s.primary(), targetId, dragged),
                     stackOnto(s.secondary(), targetId, dragged));
+        };
+    }
+
+    // -------------------------------------------------------------------------
+    // Saved-tree helpers
+    // -------------------------------------------------------------------------
+
+    /** Collect all non-editor view IDs from a saved node tree. */
+    private static Set<String> collectViewIds(LayoutNode node) {
+        Set<String> ids = new LinkedHashSet<>();
+        collectViewIdsInto(node, ids);
+        return ids;
+    }
+
+    private static void collectViewIdsInto(LayoutNode node, Set<String> ids) {
+        switch (node) {
+            case LeafNode  l  -> { if (!l.id().equals(IPageLayout.ID_EDITOR_AREA)) ids.add(l.id()); }
+            case StackNode sn -> sn.leaves().forEach(l -> ids.add(l.id()));
+            case SplitNode s  -> { collectViewIdsInto(s.primary(), ids); collectViewIdsInto(s.secondary(), ids); }
+        }
+    }
+
+    /** Rebuild a node tree using fresh Vaadin components (stale ones from prior session are discarded). */
+    private LayoutNode rebuildTreeFromSaved(LayoutNode saved) {
+        return switch (saved) {
+            case LeafNode l -> {
+                if (l.id().equals(IPageLayout.ID_EDITOR_AREA))
+                    yield new LeafNode(l.id(), l.name(), l.icon(), editorArea);
+                IViewPart vp = page.getOpenView(l.id());
+                if (vp == null) yield l;
+                ViewDescriptor vd = registry.findView(l.id()).orElse(null);
+                VaadinIcon icon = vd != null ? vd.icon() : l.icon();
+                String name     = vd != null ? vd.name() : l.name();
+                yield new LeafNode(l.id(), name, icon, new ViewContainer(vp, icon, l.id()));
+            }
+            case StackNode sn -> {
+                int sel = state.getStackSelectedIndex(sn.id(), sn.selected());
+                List<LeafNode> leaves = sn.leaves().stream()
+                        .map(l -> (LeafNode) rebuildTreeFromSaved(l))
+                        .toList();
+                yield new StackNode(sn.id(), sn.name(), sn.icon(), leaves, sel);
+            }
+            case SplitNode s -> new SplitNode(s.orientation(), s.splitterPos(),
+                    rebuildTreeFromSaved(s.primary()),
+                    rebuildTreeFromSaved(s.secondary()));
         };
     }
 

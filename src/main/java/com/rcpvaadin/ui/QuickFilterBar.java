@@ -24,7 +24,7 @@ public class QuickFilterBar extends HorizontalLayout {
         setAlignItems(FlexComponent.Alignment.CENTER);
 
         Icon searchIcon = new Icon(VaadinIcon.SEARCH);
-        searchIcon.setSize("16px");
+        searchIcon.setSize("18px");
         searchIcon.getStyle()
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("flex-shrink", "0")

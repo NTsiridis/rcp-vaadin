@@ -36,6 +36,7 @@ public class EditorArea extends VerticalLayout implements Collapsible {
     private Runnable unmaximizeCallback = null;
     private boolean  maximized          = false;
     private int      minimizeCounter    = 0;
+    private Button   maximizeBtn;
 
     public EditorArea() {
         setSizeFull();
@@ -44,6 +45,32 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         tabSheet.setSizeFull();
         add(tabSheet);
         setFlexGrow(1, tabSheet);
+
+        // ── Tab strip suffix: maximize + collapse ──
+        Icon collapseIcon = new Icon(VaadinIcon.ANGLE_DOWN);
+        collapseIcon.setSize("18px");
+        Button collapseBtn = new Button(collapseIcon);
+        collapseBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        collapseBtn.addClassName("tab-strip-btn");
+        collapseBtn.setTooltipText("Minimize editors");
+        collapseBtn.addClickListener(e -> { if (collapseCallback != null) collapseCallback.run(); });
+
+        Icon maxIcon = new Icon(VaadinIcon.EXPAND_SQUARE);
+        maxIcon.setSize("18px");
+        maximizeBtn = new Button(maxIcon);
+        maximizeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+        maximizeBtn.addClassName("tab-strip-btn");
+        maximizeBtn.setTooltipText("Maximize editors");
+        maximizeBtn.addClickListener(e -> {
+            if (!maximized) doMaximize();
+            else            doUnmaximize();
+        });
+
+        HorizontalLayout suffixLayout = new HorizontalLayout(maximizeBtn, collapseBtn);
+        suffixLayout.setPadding(false);
+        suffixLayout.setSpacing(false);
+        suffixLayout.getStyle().set("gap", "2px").set("align-items", "center").set("padding-right", "4px");
+        tabSheet.setSuffixComponent(suffixLayout);
     }
 
     public void setPage(IWorkbenchPage page) {
@@ -70,10 +97,7 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         }
 
         Tab tab = buildTab(editor, input, icon);
-        EditorContainer content = new EditorContainer(editor, icon,
-                () -> minimizeEditorTab(input, editor, icon),
-                this::doMaximize,
-                this::doUnmaximize);
+        EditorContainer content = new EditorContainer(editor, icon);
         tabToContainer.put(tab, content);
         tabSheet.add(tab, content);
         tabSheet.setSelectedTab(tab);
@@ -123,9 +147,10 @@ public class EditorArea extends VerticalLayout implements Collapsible {
 
     private Tab buildTab(IEditorPart editor, IEditorInput input, VaadinIcon icon) {
         Icon tabIcon = new Icon(icon);
-        tabIcon.getStyle().set("width", "12px").set("height", "12px");
+        tabIcon.getStyle().set("width", "18px").set("height", "18px");
 
         Span titleSpan = new Span(editor.getTitle());
+        titleSpan.addClassName("view-title");
 
         Button closeBtn = new Button("×");
         closeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE, ButtonVariant.LUMO_SMALL);
@@ -168,6 +193,11 @@ public class EditorArea extends VerticalLayout implements Collapsible {
     @Override
     public void setMaximizedState(boolean m) {
         this.maximized = m;
-        tabToContainer.values().forEach(ec -> ec.setMaximizedState(m));
+        if (maximizeBtn != null) {
+            Icon icon = new Icon(m ? VaadinIcon.COMPRESS : VaadinIcon.EXPAND_SQUARE);
+            icon.setSize("18px");
+            maximizeBtn.setIcon(icon);
+            maximizeBtn.setTooltipText(m ? "Restore editors" : "Maximize editors");
+        }
     }
 }

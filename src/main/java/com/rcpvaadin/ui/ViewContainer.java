@@ -42,14 +42,14 @@ public class ViewContainer extends VerticalLayout implements Collapsible {
         setSpacing(false);
 
         Icon collapseIcon = new Icon(VaadinIcon.ANGLE_DOWN);
-        collapseIcon.setSize("22px");
+        collapseIcon.setSize("18px");
         Button collapseBtn = new Button(collapseIcon);
         collapseBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         collapseBtn.getStyle().set("min-width", "30px").set("width", "30px").set("height", "30px");
         collapseBtn.setTooltipText("Minimize");
 
         Icon maxIcon = new Icon(VaadinIcon.EXPAND_SQUARE);
-        maxIcon.setSize("22px");
+        maxIcon.setSize("18px");
         maximizeBtn = new Button(maxIcon);
         maximizeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
         maximizeBtn.getStyle().set("min-width", "30px").set("width", "30px").set("height", "30px");
@@ -198,7 +198,7 @@ public class ViewContainer extends VerticalLayout implements Collapsible {
     public void setMaximizedState(boolean m) {
         this.maximized = m;
         Icon icon = new Icon(m ? VaadinIcon.COMPRESS : VaadinIcon.EXPAND_SQUARE);
-        icon.setSize("22px");
+        icon.setSize("18px");
         maximizeBtn.setIcon(icon);
         maximizeBtn.getStyle().set("color", m ? "var(--lumo-primary-color)" : "");
         maximizeBtn.setTooltipText(m ? "Restore" : "Maximize");

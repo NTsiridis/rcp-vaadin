@@ -54,8 +54,9 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
 
     // References to the toggle button and SideNav inside navPanel —
     // rebuilt on each perspective switch by updateNavDrawer().
-    private Button  navPanelToggle  = null;
-    private SideNav navSideNav      = null;
+    private Button  navPanelToggle   = null;
+    private Span    navPanelNameSpan = null;
+    private SideNav navSideNav       = null;
     private boolean navPanelExpanded = true;
 
     private final Map<String, SideNavItem>  navLeafItems = new LinkedHashMap<>();
@@ -121,8 +122,8 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
 
     private HorizontalLayout buildHeader() {
         Icon logo = new Icon(VaadinIcon.CUBES);
-        logo.setSize("20px");
-        logo.getStyle().set("color", "#f59e0b");
+        logo.setSize("36px");
+        logo.getStyle().set("color", "rgba(255,255,255,0.9)");
 
         Span appName = new Span("RCP Workbench");
         appName.addClassName("workbench-header-title");
@@ -162,7 +163,7 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
         PerspectiveNavItem activeNavItem = resolveDefaultNavItem(navItemList);
         currentNavItemId = activeNavItem != null ? activeNavItem.id() : null;
 
-        updateNavDrawer(navItemList, currentNavItemId);
+        updateNavDrawer(navItemList, currentNavItemId, pd.name());
 
         Class<? extends IPerspectiveFactory> factoryClass =
                 (activeNavItem != null) ? activeNavItem.layoutFactory() : pd.factoryClass();
@@ -172,6 +173,7 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
         perspectiveBar.selectPerspective(newPerspId);
         statusBar.setPerspective(pd.name());
         statusBar.setStatus("Ready");
+        getElement().getStyle().set("--perspective-color", pd.color());
 
         currentPerspectiveId = newPerspId;
     }
@@ -233,8 +235,11 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
 
     private void saveOutgoingState(String perspId, String navItemId) {
         if (perspectiveLayout != null && perspId != null) {
-            allStates.computeIfAbsent(stateKey(perspId, navItemId), k -> new PerspectiveState())
-                     .setMinimizedIds(perspectiveLayout.getCurrentlyMinimized());
+            PerspectiveState s = allStates.computeIfAbsent(
+                    stateKey(perspId, navItemId), k -> new PerspectiveState());
+            s.setMinimizedIds(perspectiveLayout.getCurrentlyMinimized());
+            s.setSavedRootNode(perspectiveLayout.getRootNode());
+            perspectiveLayout.captureStackSelections();
         }
     }
 
@@ -253,11 +258,12 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
      * Repopulate the nav panel for the incoming perspective.
      * Always resets to the expanded state on perspective switch.
      */
-    private void updateNavDrawer(List<PerspectiveNavItem> items, String selectedId) {
+    private void updateNavDrawer(List<PerspectiveNavItem> items, String selectedId, String perspectiveName) {
         navPanel.removeAll();
         navLeafItems.clear();
-        navPanelToggle = null;
-        navSideNav     = null;
+        navPanelToggle   = null;
+        navPanelNameSpan = null;
+        navSideNav       = null;
 
         boolean hasNav = items.size() > 1;
         navPanel.setVisible(hasNav);
@@ -273,10 +279,14 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
         navPanelToggle.setTooltipText("Collapse");
         navPanelToggle.addClickListener(e -> setNavPanelExpanded(!navPanelExpanded));
 
-        HorizontalLayout toggleRow = new HorizontalLayout(navPanelToggle);
+        navPanelNameSpan = new Span(perspectiveName);
+        navPanelNameSpan.addClassName("nav-panel-perspective-name");
+
+        HorizontalLayout toggleRow = new HorizontalLayout(navPanelNameSpan, navPanelToggle);
         toggleRow.addClassName("nav-panel-toggle-row");
         toggleRow.setWidthFull();
-        toggleRow.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+        toggleRow.setAlignItems(FlexComponent.Alignment.CENTER);
+        toggleRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         toggleRow.setPadding(false);
         toggleRow.setSpacing(false);
 
@@ -305,6 +315,9 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
         navPanel.setWidth(navPanelExpanded ? "220px" : "36px");
         if (navSideNav != null) {
             navSideNav.setVisible(navPanelExpanded);
+        }
+        if (navPanelNameSpan != null) {
+            navPanelNameSpan.setVisible(navPanelExpanded);
         }
         if (navPanelToggle != null) {
             Icon icon = new Icon(navPanelExpanded ? VaadinIcon.CHEVRON_LEFT : VaadinIcon.CHEVRON_RIGHT);
@@ -403,7 +416,6 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
 
     @Override
     public void perspectiveChanged(String perspectiveId) {
-        currentNavItemId = null;
         rebuildLayout();
     }
 

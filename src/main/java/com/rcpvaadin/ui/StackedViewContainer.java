@@ -23,9 +23,10 @@ public class StackedViewContainer extends VerticalLayout implements Collapsible 
     private final String stackId;
     private final List<LeafNode> leaves;
     private final List<ViewContainer> views;
-    private final VerticalLayout contentSlot = new VerticalLayout();
     private final List<HorizontalLayout> tabHeaders = new ArrayList<>();
     private int selectedIndex = 0;
+
+    public int getSelectedIndex() { return selectedIndex; }
 
     private Button maximizeBtn;
     private boolean maximized = false;
@@ -53,7 +54,7 @@ public class StackedViewContainer extends VerticalLayout implements Collapsible 
             LeafNode leaf = leaves.get(i);
 
             Icon tabIcon = new Icon(leaf.icon());
-            tabIcon.getStyle().set("width", "14px").set("height", "14px");
+            tabIcon.getStyle().set("width", "18px").set("height", "18px");
 
             Span tabLabel = new Span(leaf.name());
 
@@ -62,7 +63,6 @@ public class StackedViewContainer extends VerticalLayout implements Collapsible 
             tabHeader.setPadding(false);
             tabHeader.setAlignItems(FlexComponent.Alignment.CENTER);
 
-            // DragSource on each tab header so the view can be dragged out
             DragSource<HorizontalLayout> ds = DragSource.create(tabHeader);
             ds.setDragData(leaf.id());
 
@@ -81,7 +81,7 @@ public class StackedViewContainer extends VerticalLayout implements Collapsible 
         maxIcon.setSize("18px");
         maximizeBtn = new Button(maxIcon);
         maximizeBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        maximizeBtn.getStyle().set("min-width", "26px").set("width", "26px").set("height", "26px");
+        maximizeBtn.addClassName("tab-strip-btn");
         maximizeBtn.setTooltipText("Maximize");
         maximizeBtn.addClickListener(e -> {
             if (!maximized) { if (maximizeCallback   != null) maximizeCallback.run(); }
@@ -93,7 +93,7 @@ public class StackedViewContainer extends VerticalLayout implements Collapsible 
         collapseIcon.setSize("18px");
         Button collapseBtn = new Button(collapseIcon);
         collapseBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
-        collapseBtn.getStyle().set("min-width", "26px").set("width", "26px").set("height", "26px");
+        collapseBtn.addClassName("tab-strip-btn");
         collapseBtn.setTooltipText("Minimize");
         collapseBtn.addClickListener(e -> {
             setVisible(false);
@@ -102,19 +102,12 @@ public class StackedViewContainer extends VerticalLayout implements Collapsible 
 
         tabStrip.add(maximizeBtn, collapseBtn);
 
-        // ---- Content slot ----
-        contentSlot.setSizeFull();
-        contentSlot.setPadding(false);
-        contentSlot.setSpacing(false);
-
-        add(tabStrip, contentSlot);
-        setFlexGrow(1, contentSlot);
-
-        // Add all views upfront (hidden); selectView will flip visibility
+        // ---- Tab strip first, then views directly (no intermediate wrapper) ----
+        add(tabStrip);
         for (int i = 0; i < views.size(); i++) {
             ViewContainer vc = views.get(i);
-            contentSlot.add(vc);
-            contentSlot.setFlexGrow(1, vc);
+            add(vc);
+            setFlexGrow(1, vc);
             vc.setVisible(false);
         }
 
@@ -130,7 +123,6 @@ public class StackedViewContainer extends VerticalLayout implements Collapsible 
             });
         });
 
-        // Select the initial view
         selectView(node.selected());
     }
 
@@ -174,7 +166,6 @@ public class StackedViewContainer extends VerticalLayout implements Collapsible 
         Icon icon = new Icon(m ? VaadinIcon.COMPRESS : VaadinIcon.EXPAND_SQUARE);
         icon.setSize("18px");
         maximizeBtn.setIcon(icon);
-        maximizeBtn.getStyle().set("color", m ? "var(--lumo-primary-color)" : "");
         maximizeBtn.setTooltipText(m ? "Restore" : "Maximize");
     }
 }

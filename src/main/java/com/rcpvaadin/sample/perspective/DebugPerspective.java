@@ -5,7 +5,7 @@ import com.rcpvaadin.workbench.perspective.IPageLayout;
 import com.rcpvaadin.workbench.perspective.IPerspectiveFactory;
 import com.vaadin.flow.component.icon.VaadinIcon;
 
-@RcpPerspective(id = "debugPerspective", name = "Debug", icon = VaadinIcon.BUG)
+@RcpPerspective(id = "debugPerspective", name = "Debug", icon = VaadinIcon.BUG, color = "#dc2626")
 public class DebugPerspective implements IPerspectiveFactory {
 
     @Override

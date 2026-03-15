@@ -12,4 +12,5 @@ public @interface RcpPerspective {
     String id();
     String name();
     VaadinIcon icon() default VaadinIcon.VAADIN_H;
+    String color() default "#4f46e5";
 }

@@ -16,13 +16,15 @@ public class StatusBar extends HorizontalLayout {
                 .set("height", "22px")
                 .set("min-height", "22px")
                 .set("padding", "0 8px")
-                .set("border-top", "1px solid var(--lumo-contrast-20pct)")
-                .set("background", "var(--lumo-contrast-5pct)")
+                .set("border-top", "2px solid var(--perspective-color)")
+                .set("background", "var(--flat-bg-subtle)")
                 .set("font-size", "var(--lumo-font-size-xs)")
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("flex-shrink", "0");
 
-        perspectiveSpan.getStyle().set("font-weight", "600");
+        perspectiveSpan.getStyle()
+                .set("font-weight", "600")
+                .set("color", "var(--perspective-color)");
 
         Span spacer = new Span();
         add(perspectiveSpan, spacer, statusSpan);
