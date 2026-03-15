@@ -125,9 +125,9 @@ public class ViewContainer extends VerticalLayout implements Collapsible {
 
             HorizontalLayout toolbarBar = buildToolbarBar(items);
             add(titleBar, toolbarBar, quickFilterBar, content, partStatusBar);
-        } else if (toolbarItems.isEmpty()) {
-            add(titleBar, content, partStatusBar);
         } else {
+            // Always include toolbarBar (even when empty) so every panel has
+            // the same fixed 62 px header height, aligning with EditorArea.
             HorizontalLayout toolbarBar = buildToolbarBar(toolbarItems);
             add(titleBar, toolbarBar, content, partStatusBar);
         }

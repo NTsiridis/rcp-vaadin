@@ -4,7 +4,6 @@ import com.rcpvaadin.workbench.IEditorPart;
 import com.rcpvaadin.workbench.PartSite;
 import com.rcpvaadin.workbench.search.ISearchableEditor;
 import com.vaadin.flow.component.icon.VaadinIcon;
-import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 
 public class EditorContainer extends VerticalLayout {
@@ -13,10 +12,6 @@ public class EditorContainer extends VerticalLayout {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-
-        // ── Toolbar bar (editor-specific items only) ──
-        HorizontalLayout toolbarBar = ViewContainer.buildToolbarBar(editor.getToolbarItems());
-        add(toolbarBar);
 
         // ── Search Panel ──
         if (editor instanceof ISearchableEditor se) {

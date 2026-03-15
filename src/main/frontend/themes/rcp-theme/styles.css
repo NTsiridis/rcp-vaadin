@@ -10,6 +10,10 @@
     --lumo-font-size-l:   1.0625rem;   /* 17 px  (was 18 px) */
     --lumo-font-size-xl:  1.25rem;     /* 20 px  (was 22 px) */
 
+    /* Panel zone heights — single source of truth shared by Java and CSS */
+    --panel-title-height:   28px;      /* view title-bar / editor tab-strip */
+    --panel-toolbar-height: 34px;      /* view toolbar-bar / editor toolbar-bar */
+
     /* Perspective accent — overridden per-perspective via Java getElement().getStyle() */
     --perspective-color:          #4f46e5;
 
@@ -77,11 +81,46 @@ vaadin-split-layout::part(handle) {
     border-radius: 1px;
 }
 
+/* HORIZONTAL orientation: transparent so .perspective-layout gradient shows in the gap */
+vaadin-split-layout[orientation="horizontal"] {
+    background: transparent;
+}
+
+vaadin-split-layout[orientation="horizontal"]::part(splitter) {
+    background: transparent;
+    min-width:  4px;
+    padding:    0;
+}
+
+/* Handle: tall × thin (correct orientation for a vertical drag bar) */
+vaadin-split-layout[orientation="horizontal"]::part(handle) {
+    width:         2px;
+    height:        24px;
+    background:    rgba(0, 0, 0, 0.15);
+    border-radius: 1px;
+}
+
+/* ==========================================================================
+   Perspective layout — gradient background shows through transparent splitter gap
+   ========================================================================== */
+.perspective-layout {
+    background: linear-gradient(
+        to bottom,
+        var(--perspective-color)                                                  0px,
+        var(--perspective-color)                                                  var(--panel-title-height),
+        #ffffff                                                                   var(--panel-title-height),
+        #ffffff                                                                   calc(var(--panel-title-height) + var(--panel-toolbar-height)),
+        #f0f4f8                                                                   calc(var(--panel-title-height) + var(--panel-toolbar-height))
+    );
+}
+
 /* ==========================================================================
    View title bar
    ========================================================================== */
 .view-title-bar {
     background:    var(--perspective-color);
+    height:        var(--panel-title-height);
+    min-height:    var(--panel-title-height);
     padding:       2px 6px;
     border-bottom: none;
     border-left:   none;
@@ -316,7 +355,8 @@ vaadin-split-layout::part(handle) {
     flex-shrink:     0;
     border-bottom:   1px solid var(--flat-border);
     background:      #ffffff;
-    min-height:      34px;
+    height:          var(--panel-toolbar-height);
+    min-height:      var(--panel-toolbar-height);
 }
 
 .toolbar-btn {
@@ -378,6 +418,9 @@ vaadin-split-layout::part(handle) {
    Stacked view tab strip
    ========================================================================== */
 .stack-tab-strip {
+    height:        var(--panel-title-height);
+    min-height:    var(--panel-title-height);
+    overflow:      hidden;
     background:    var(--perspective-color);
     border-bottom: none;
     padding:       2px 4px;
@@ -418,7 +461,71 @@ vaadin-tabsheet::part(tabs-container) {
     background:    var(--perspective-color);
     border-bottom: none;
     padding:       0 4px;
-    min-height:    28px;
+    height:        var(--panel-title-height);
+    min-height:    var(--panel-title-height);
+}
+
+/* Editor tab header (new Tabs-based structure) */
+.editor-tab-header {
+    background:    var(--perspective-color);
+    border-bottom: none;
+    padding:       0 4px;
+    height:        var(--panel-title-height);
+    min-height:    var(--panel-title-height);
+    cursor:        default;
+    user-select:   none;
+}
+
+/* ── New Tabs-based editor tab strip (mirrors vaadin-tabsheet rules) ── */
+.editor-tab-header vaadin-tabs {
+    background:    transparent;
+    border-bottom: none;
+    height:        100%;
+    --lumo-primary-color: var(--perspective-color);
+}
+
+/* Tab icon */
+.editor-tab-header vaadin-tab vaadin-icon {
+    width:       18px;
+    height:      18px;
+    flex-shrink: 0;
+    color:       rgba(255,255,255,0.85);
+}
+
+.editor-tab-header vaadin-tab[selected] vaadin-icon {
+    color: var(--perspective-color);
+}
+
+.editor-tab-header vaadin-tab {
+    color:         var(--flat-sidebar-icon);
+    border-bottom: none;
+    border-radius: var(--lumo-border-radius-s);
+}
+
+.editor-tab-header vaadin-tab[selected] {
+    background:    #ffffff;
+    color:         var(--perspective-color);
+    border-bottom: none;
+}
+
+.editor-tab-header vaadin-tab[selected] .view-title {
+    color: var(--perspective-color);
+}
+
+.editor-tab-header vaadin-tab:hover:not([selected]) {
+    background: var(--flat-sidebar-hover);
+    color:      #fff;
+}
+
+/* Close button inside tab */
+.editor-tab-header vaadin-tab vaadin-button {
+    color:     var(--flat-sidebar-icon);
+    min-width: 20px;
+    width:     20px;
+    height:    20px;
+}
+.editor-tab-header vaadin-tab[selected] vaadin-button {
+    color: var(--perspective-color);
 }
 
 /* Tab icon — match view-title-bar icon style */

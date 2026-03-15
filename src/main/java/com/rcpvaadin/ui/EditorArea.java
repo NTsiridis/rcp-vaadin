@@ -3,18 +3,21 @@ package com.rcpvaadin.ui;
 import com.rcpvaadin.workbench.IEditorInput;
 import com.rcpvaadin.workbench.IEditorPart;
 import com.rcpvaadin.workbench.IWorkbenchPage;
+import com.rcpvaadin.workbench.ToolbarItem;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
-import com.vaadin.flow.component.tabs.TabSheet;
+import com.vaadin.flow.component.tabs.Tabs;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class EditorArea extends VerticalLayout implements Collapsible {
@@ -22,10 +25,14 @@ public class EditorArea extends VerticalLayout implements Collapsible {
     private record MinimizedEditorEntry(
             IEditorPart editor, IEditorInput input, VaadinIcon icon, EditorContainer container) {}
 
-    private final TabSheet                          tabSheet         = new TabSheet();
+    private final Tabs                              tabs             = new Tabs();
+    private final HorizontalLayout                 tabHeader        = new HorizontalLayout();
+    private final HorizontalLayout                 toolbarBar       = new HorizontalLayout();
+    private final VerticalLayout                   contentArea      = new VerticalLayout();
     private final Map<IEditorInput, Tab>            inputToTab       = new HashMap<>();
     private final Map<Tab, IEditorInput>            tabToInput       = new HashMap<>();
     private final Map<Tab, EditorContainer>         tabToContainer   = new HashMap<>();
+    private final Map<Tab, IEditorPart>             tabToEditor      = new HashMap<>();
     private final Map<String, MinimizedEditorEntry> minimizedEditors = new LinkedHashMap<>();
 
     private IWorkbenchPage page;
@@ -42,11 +49,19 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
-        tabSheet.setSizeFull();
-        add(tabSheet);
-        setFlexGrow(1, tabSheet);
 
-        // ── Tab strip suffix: maximize + collapse ──
+        // ── Tab header row (uses .view-title-bar height via .editor-tab-header) ──
+        tabHeader.addClassName("view-title-bar");
+        tabHeader.addClassName("editor-tab-header");
+        tabHeader.setPadding(false);
+        tabHeader.setSpacing(false);
+        tabHeader.setWidthFull();
+        tabHeader.setAlignItems(FlexComponent.Alignment.CENTER);
+
+        tabs.setWidthFull();
+        tabs.getStyle().set("flex-grow", "1").set("min-width", "0").set("background", "transparent");
+
+        // Suffix buttons: maximize + collapse
         Icon collapseIcon = new Icon(VaadinIcon.ANGLE_DOWN);
         collapseIcon.setSize("18px");
         Button collapseBtn = new Button(collapseIcon);
@@ -69,9 +84,70 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         HorizontalLayout suffixLayout = new HorizontalLayout(maximizeBtn, collapseBtn);
         suffixLayout.setPadding(false);
         suffixLayout.setSpacing(false);
-        suffixLayout.getStyle().set("gap", "2px").set("align-items", "center").set("padding-right", "4px");
-        tabSheet.setSuffixComponent(suffixLayout);
+        suffixLayout.getStyle()
+                .set("gap", "2px")
+                .set("align-items", "center")
+                .set("padding-right", "4px")
+                .set("flex-shrink", "0");
+
+        tabHeader.add(tabs, suffixLayout);
+        tabHeader.setFlexGrow(1, tabs);
+
+        // ── Toolbar bar (mirrors ViewContainer.buildToolbarBar height) ──
+        toolbarBar.addClassName("part-toolbar-bar");
+        toolbarBar.setPadding(false);
+        toolbarBar.setSpacing(false);
+        toolbarBar.setWidthFull();
+        toolbarBar.setAlignItems(FlexComponent.Alignment.CENTER);
+        toolbarBar.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+
+        // ── Content area ──
+        contentArea.setSizeFull();
+        contentArea.setPadding(false);
+        contentArea.setSpacing(false);
+        contentArea.getStyle().set("overflow", "hidden").set("position", "relative");
+
+        add(tabHeader, toolbarBar, contentArea);
+        setFlexGrow(1, contentArea);
+
+        // Tab selection → rebind UI
+        tabs.addSelectedChangeListener(e -> rebindActiveTabUI());
     }
+
+    // -------------------------------------------------------------------------
+    // Active-tab binding
+    // -------------------------------------------------------------------------
+
+    private void rebindActiveTabUI() {
+        Tab selectedTab = tabs.getSelectedTab();
+
+        // Show only the selected editor container
+        tabToContainer.forEach((tab, container) ->
+                container.setVisible(tab.equals(selectedTab)));
+
+        // Repopulate toolbar with active editor's items
+        toolbarBar.removeAll();
+        if (selectedTab != null) {
+            IEditorPart editor = tabToEditor.get(selectedTab);
+            if (editor != null) {
+                List<ToolbarItem> items = editor.getToolbarItems();
+                for (ToolbarItem item : items) {
+                    Icon icon = new Icon(item.icon());
+                    icon.setSize("18px");
+                    Button btn = new Button(icon);
+                    btn.addThemeVariants(ButtonVariant.LUMO_TERTIARY_INLINE);
+                    btn.addClassName("toolbar-btn");
+                    btn.setTooltipText(item.tooltip());
+                    btn.addClickListener(ev -> item.action().run());
+                    toolbarBar.add(btn);
+                }
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Page / MinimizedBar injection
+    // -------------------------------------------------------------------------
 
     public void setPage(IWorkbenchPage page) {
         this.page = page;
@@ -81,10 +157,14 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         this.minimizedBar = minimizedBar;
     }
 
+    // -------------------------------------------------------------------------
+    // Open / close
+    // -------------------------------------------------------------------------
+
     public void openTab(IEditorPart editor, IEditorInput input, VaadinIcon icon) {
         // Case 1: already visible in a tab
         if (inputToTab.containsKey(input)) {
-            tabSheet.setSelectedTab(inputToTab.get(input));
+            tabs.setSelectedTab(inputToTab.get(input));
             return;
         }
 
@@ -97,18 +177,23 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         }
 
         Tab tab = buildTab(editor, input, icon);
-        EditorContainer content = new EditorContainer(editor, icon);
-        tabToContainer.put(tab, content);
-        tabSheet.add(tab, content);
-        tabSheet.setSelectedTab(tab);
+        EditorContainer container = new EditorContainer(editor, icon);
+        container.setVisible(false);  // hidden until selected
+        tabToContainer.put(tab, container);
+        tabToEditor.put(tab, editor);
+        tabs.add(tab);
+        contentArea.add(container);
+        tabs.setSelectedTab(tab);  // triggers rebindActiveTabUI
     }
 
     public void closeTab(IEditorInput input) {
         Tab tab = inputToTab.remove(input);
         if (tab != null) {
             tabToInput.remove(tab);
-            tabToContainer.remove(tab);
-            tabSheet.remove(tab);
+            EditorContainer container = tabToContainer.remove(tab);
+            tabToEditor.remove(tab);
+            tabs.remove(tab);
+            if (container != null) contentArea.remove(container);
         }
     }
 
@@ -121,7 +206,9 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         if (tab == null) return;
         EditorContainer container = tabToContainer.remove(tab);
         tabToInput.remove(tab);
-        tabSheet.remove(tab);
+        tabToEditor.remove(tab);
+        tabs.remove(tab);
+        if (container != null) contentArea.remove(container);
 
         if (minimizedBar != null) {
             String minId = "editor_" + (minimizeCounter++);
@@ -136,9 +223,13 @@ public class EditorArea extends VerticalLayout implements Collapsible {
         if (minimizedBar != null) minimizedBar.removeMinimized(minId);
 
         Tab newTab = buildTab(entry.editor(), entry.input(), entry.icon());
-        tabToContainer.put(newTab, entry.container());
-        tabSheet.add(newTab, entry.container());
-        tabSheet.setSelectedTab(newTab);
+        EditorContainer container = entry.container();
+        container.setVisible(false);
+        tabToContainer.put(newTab, container);
+        tabToEditor.put(newTab, entry.editor());
+        tabs.add(newTab);
+        contentArea.add(container);
+        tabs.setSelectedTab(newTab);
     }
 
     // -------------------------------------------------------------------------

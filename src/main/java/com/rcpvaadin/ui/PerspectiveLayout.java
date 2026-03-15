@@ -99,6 +99,7 @@ public class PerspectiveLayout extends VerticalLayout {
         setSizeFull();
         setPadding(false);
         setSpacing(false);
+        addClassName("perspective-layout");
 
         LayoutNode savedRoot = state.getSavedRootNode();
         LayoutNode root;
