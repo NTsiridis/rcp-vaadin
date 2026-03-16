@@ -48,6 +48,7 @@ vaadin-app-layout::part(navbar) {
 vaadin-app-layout::part(content) {
     overflow: auto;
     min-height: 0;
+    min-width: 600px;
 }
 
 /* ==========================================================================
@@ -55,9 +56,18 @@ vaadin-app-layout::part(content) {
    ========================================================================== */
 vaadin-split-layout > [slot="primary"],
 vaadin-split-layout > [slot="secondary"] {
+    min-width:  80px;
+    min-height: 60px;
+    overflow:   hidden;
+    transition: flex-basis 0.15s ease;
+}
+
+/* Override: disable min sizes when collapsing/maximizing */
+vaadin-split-layout.layout-no-min > [slot="primary"],
+vaadin-split-layout.layout-no-min > [slot="secondary"] {
     min-width:  0;
     min-height: 0;
-    overflow:   hidden;
+    transition: none;
 }
 
 /* ==========================================================================
@@ -164,6 +174,7 @@ vaadin-split-layout[orientation="horizontal"]::part(handle) {
     border-right: none;
     padding:      6px 0;
     align-items:  center;
+    transition:   width 0.15s ease;
 }
 
 .perspective-btn {
@@ -200,6 +211,7 @@ vaadin-split-layout[orientation="horizontal"]::part(handle) {
     border-left: none;
     padding:     6px 0;
     align-items: center;
+    transition:  width 0.15s ease;
 }
 
 .minimized-btn {

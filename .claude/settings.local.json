@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(cd \"C:\\\\Source code\\\\rcp-vaadin\" && mvn compile -q 2>&1 | tail -50)",
-      "Bash(cd \"C:\\\\Source code\\\\rcp-vaadin\" && mvn test -q 2>&1 | grep -E \"\\(Tests run|FAIL|ERROR|BUILD\\)\" | tail -5)"
+      "Bash(cd \"C:\\\\Source code\\\\rcp-vaadin\" && mvn test -q 2>&1 | grep -E \"\\(Tests run|FAIL|ERROR|BUILD\\)\" | tail -5)",
+      "Bash(/opt/homebrew/bin/mvn compile:*)"
     ]
   }
 }

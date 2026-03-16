@@ -252,6 +252,7 @@ public class PerspectiveLayout extends VerticalLayout {
         for (PathStep step : path) {
             SplitLayout sl = splitLayouts.get(splitKey(step.node()));
             if (sl == null) continue;
+            setSplitMinEnabled(sl, false);
             sl.setSplitterPosition(step.targetIsPrimary() ? 100.0 : 0.0);
         }
 
@@ -266,7 +267,10 @@ public class PerspectiveLayout extends VerticalLayout {
         if (maximizeSnapshot != null) {
             maximizeSnapshot.forEach((key, pos) -> {
                 SplitLayout sl = splitLayouts.get(key);
-                if (sl != null) sl.setSplitterPosition(pos);
+                if (sl != null) {
+                    sl.setSplitterPosition(pos);
+                    setSplitMinEnabled(sl, true);
+                }
             });
         }
 
@@ -279,6 +283,11 @@ public class PerspectiveLayout extends VerticalLayout {
     // -------------------------------------------------------------------------
     // Rendering
     // -------------------------------------------------------------------------
+
+    private static void setSplitMinEnabled(SplitLayout sl, boolean enabled) {
+        if (enabled) sl.removeClassName("layout-no-min");
+        else         sl.addClassName("layout-no-min");
+    }
 
     private Component renderNode(LayoutNode node) {
         return switch (node) {
@@ -338,11 +347,13 @@ public class PerspectiveLayout extends VerticalLayout {
                         if (currentlyMinimized.contains(ln.id())) return;
                         double restorePos = currentPos[0];
                         currentlyMinimized.add(ln.id());
+                        setSplitMinEnabled(layout, false);
                         primaryComp.setVisible(false);
                         layout.setSplitterPosition(0);
                         minimizedBar.addMinimized(ln.id(), ln.name(), ln.icon(), () -> {
                             primaryComp.setVisible(true);
                             layout.setSplitterPosition(restorePos);
+                            setSplitMinEnabled(layout, true);
                             currentlyMinimized.remove(ln.id());
                             minimizedBar.removeMinimized(ln.id());
                         });
@@ -369,11 +380,13 @@ public class PerspectiveLayout extends VerticalLayout {
                         if (currentlyMinimized.contains(sn.id())) return;
                         double restorePos = currentPos[0];
                         currentlyMinimized.add(sn.id());
+                        setSplitMinEnabled(layout, false);
                         primaryComp.setVisible(false);
                         layout.setSplitterPosition(0);
                         minimizedBar.addMinimized(sn.id(), sn.name(), sn.icon(), () -> {
                             primaryComp.setVisible(true);
                             layout.setSplitterPosition(restorePos);
+                            setSplitMinEnabled(layout, true);
                             currentlyMinimized.remove(sn.id());
                             minimizedBar.removeMinimized(sn.id());
                         });
@@ -393,11 +406,13 @@ public class PerspectiveLayout extends VerticalLayout {
                         if (currentlyMinimized.contains(ln.id())) return;
                         double restorePos = currentPos[0];
                         currentlyMinimized.add(ln.id());
+                        setSplitMinEnabled(layout, false);
                         secondaryComp.setVisible(false);
                         layout.setSplitterPosition(100);
                         minimizedBar.addMinimized(ln.id(), ln.name(), ln.icon(), () -> {
                             secondaryComp.setVisible(true);
                             layout.setSplitterPosition(restorePos);
+                            setSplitMinEnabled(layout, true);
                             currentlyMinimized.remove(ln.id());
                             minimizedBar.removeMinimized(ln.id());
                         });
@@ -424,11 +439,13 @@ public class PerspectiveLayout extends VerticalLayout {
                         if (currentlyMinimized.contains(sn.id())) return;
                         double restorePos = currentPos[0];
                         currentlyMinimized.add(sn.id());
+                        setSplitMinEnabled(layout, false);
                         secondaryComp.setVisible(false);
                         layout.setSplitterPosition(100);
                         minimizedBar.addMinimized(sn.id(), sn.name(), sn.icon(), () -> {
                             secondaryComp.setVisible(true);
                             layout.setSplitterPosition(restorePos);
+                            setSplitMinEnabled(layout, true);
                             currentlyMinimized.remove(sn.id());
                             minimizedBar.removeMinimized(sn.id());
                         });

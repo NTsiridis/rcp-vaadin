@@ -13,6 +13,7 @@ import com.rcpvaadin.workbench.descriptor.PerspectiveNavItem;
 import com.rcpvaadin.workbench.perspective.IPerspectiveFactory;
 import com.rcpvaadin.workbench.perspective.PageLayout;
 import com.rcpvaadin.workbench.registry.WorkbenchRegistry;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -57,7 +58,8 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
     private Button  navPanelToggle   = null;
     private Span    navPanelNameSpan = null;
     private SideNav navSideNav       = null;
-    private boolean navPanelExpanded = true;
+    private boolean navPanelExpanded      = true;
+    private boolean autoCollapsedByResize = false;
 
     private final Map<String, SideNavItem>  navLeafItems = new LinkedHashMap<>();
 
@@ -112,6 +114,12 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
         outerLayout.setAlignItems(FlexComponent.Alignment.STRETCH);
         outerLayout.setFlexGrow(1, contentWrapper);
         setContent(outerLayout);
+
+        // Detect initial size and respond to future resize events
+        UI.getCurrent().getPage().retrieveExtendedClientDetails(details ->
+                handleWindowResize(details.getBodyClientWidth(), false));
+        UI.getCurrent().getPage().addBrowserWindowResizeListener(e ->
+                handleWindowResize(e.getWidth(), true));
 
         page.setPerspective("javaPerspective");   // → perspectiveChanged → rebuildLayout()
     }
@@ -309,6 +317,17 @@ public class WorkbenchView extends AppLayout implements WorkbenchPage.WorkbenchP
     private void setNavPanelExpanded(boolean expanded) {
         navPanelExpanded = expanded;
         applyNavPanelExpansion();
+    }
+
+    private void handleWindowResize(int width, boolean animate) {
+        boolean narrow = width < 1024;
+        if (narrow && navPanel.isVisible() && navPanelExpanded && !autoCollapsedByResize) {
+            autoCollapsedByResize = true;
+            setNavPanelExpanded(false);
+        } else if (!narrow && autoCollapsedByResize) {
+            autoCollapsedByResize = false;
+            setNavPanelExpanded(true);
+        }
     }
 
     private void applyNavPanelExpansion() {
